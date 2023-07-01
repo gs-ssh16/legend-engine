@@ -4,4 +4,4 @@
 
 <br/>
 
-<div style="text-align: right"><a targ="./relationalMapping.md">>> Relational Mapping</a></div>
+[>> Relational Mapping](relationalMapping.md)

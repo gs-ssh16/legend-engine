@@ -4,4 +4,4 @@
 
 <br/>
 
-<div style="text-align: right"><a targ="./serviceMapping.md">>> Service Mapping</a></div>
+[>> Service Mapping](serviceMapping.md)
