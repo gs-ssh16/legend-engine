@@ -242,7 +242,6 @@ FROM
 </table>
 
 
-
 ### Distinct to Group By conversion
 
 <table>
@@ -280,3 +279,111 @@ GROUP BY
 </td>
 </tr>
 </table>
+
+### Join with not null filter to exists clause
+
+<table>
+<tr>
+<th>Input SQL</th>
+<th>Optimized SQL</th>
+</tr>
+<tr>
+<td>
+
+
+```sql
+SELECT
+  root.ID AS "pk_0",
+  root.LEGALNAME AS "legalName"
+FROM
+  firmTable AS root
+  LEFT JOIN (
+    SELECT DISTINCT
+      persontable_1.FIRMID
+    FROM
+      personTable AS persontable_1
+    WHERE
+      persontable_1.LASTNAME = 'Smith'
+  ) AS persontable_0
+   ON root.ID = persontable_0.FIRMID
+WHERE
+  persontable_0.FIRMID IS NOT NULL
+```
+
+</td>
+<td>
+
+    
+```sql
+SELECT
+    *
+FROM
+    (
+        SELECT
+            ID,
+            LEGALNAME
+        FROM
+            firmTable
+        WHERE
+            EXISTS (
+                SELECT
+                    1
+                FROM
+                    (
+                        SELECT
+                            *
+                        FROM
+                            personTable
+                        WHERE
+                            LASTNAME = 'Smith'
+                            AND FIRMID IS NOT NULL
+                    ) AS t0
+                WHERE
+                    ID = t0.FIRMID
+            )
+    ) AS t
+```
+
+</td>
+</tr>
+</table>
+
+
+### Filter/join condition reduction
+
+<table>
+<tr>
+<th>Input SQL</th>
+<th>Optimized SQL</th>
+</tr>
+<tr>
+<td>
+
+
+```sql
+SELECT
+  root.FIRSTNAME AS "firstName",
+  root.LASTNAME AS "lastName"
+FROM
+  personTable AS root
+WHERE
+  root.FIRSTNAME = 'John'
+  OR 1 = 1
+```
+
+</td>
+<td>
+
+    
+```sql
+SELECT
+    FIRSTNAME AS "firstName",
+    LASTNAME AS "lastName"
+FROM
+    personTable
+```
+
+</td>
+</tr>
+</table>
+
