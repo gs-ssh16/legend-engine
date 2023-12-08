@@ -67,10 +67,10 @@ The proposed approach is to integrate Calcite optimizer into Legend platform as 
 
 ### Unused field trimming
 
-<table width="100%">
+<table>
 <tr>
-<th width="30%">Input SQL</th>
-<th width="70%">Optimized SQL</th>
+<th>Input SQL</th>
+<th>Optimized SQL</th>
 </tr>
 <tr>
 <td>
@@ -116,6 +116,165 @@ FROM
         FROM
             PersonSet2
     )
+```
+
+</td>
+</tr>
+</table>
+
+
+### Filter push down, left join to inner join conversion
+
+<table>
+<tr>
+<th>Input SQL</th>
+<th>Optimized SQL</th>
+</tr>
+<tr>
+<td>
+
+
+```sql
+
+SELECT
+  root.id AS "pk_0",
+  root.name AS "name"
+FROM
+  orgTable AS root
+  LEFT JOIN otherTable AS othertable_0
+   ON root.id = othertable_0.orgTableId
+WHERE
+  othertable_0.filterVal <= 4
+  AND root.name = 'Firm X'
+```
+
+</td>
+<td>
+
+    
+```sql
+SELECT
+    t.id AS "pk_0",
+    t.name AS "name"
+FROM
+    (
+        SELECT
+            id,
+            name
+        FROM
+            orgTable
+        WHERE
+            name = 'Firm X'
+    ) AS t
+    INNER JOIN (
+        SELECT
+            *
+        FROM
+            otherTable
+        WHERE
+            filterVal <= 4
+    ) AS t0 ON t.id = t0.orgTableId
+```
+
+</td>
+</tr>
+</table>
+
+
+### Join condition push
+
+<table>
+<tr>
+<th>Input SQL</th>
+<th>Optimized SQL</th>
+</tr>
+<tr>
+<td>
+
+
+```sql
+SELECT
+  producttable_0.name AS "Prod Name"
+FROM
+  OrderTable AS root
+  LEFT JOIN ProductTable AS producttable_0
+   ON root.prodFk = producttable_0.id
+      AND (
+        producttable_0.from_z <= CAST('2015-08-25' AS DATE)
+        AND producttable_0.thru_z > CAST('2015-08-25' AS DATE)
+      )
+```
+
+</td>
+<td>
+
+    
+```sql
+SELECT
+    t2.name AS "Prod Name"
+FROM
+    (
+        SELECT
+            prodFk
+        FROM
+            OrderTable
+        ORDER BY
+            prodFk
+    ) AS t0
+    LEFT JOIN (
+        SELECT
+            id,
+            name,
+            from_z,
+            thru_z
+        FROM
+            ProductTable
+        WHERE
+            from_z <= DATE '2015-08-25'
+            AND thru_z > DATE '2015-08-25'
+        ORDER BY
+            id
+    ) AS t2 ON t0.prodFk = t2.id
+```
+
+</td>
+</tr>
+</table>
+
+
+
+### Distinct to Group By conversion
+
+<table>
+<tr>
+<th>Input SQL</th>
+<th>Optimized SQL</th>
+</tr>
+<tr>
+<td>
+
+
+```sql
+SELECT DISTINCT
+  root.FIRSTNAME AS "firstName",
+  root.LASTNAME AS "lastName"
+FROM
+  personTable AS root
+```
+
+</td>
+<td>
+
+    
+```sql
+SELECT
+    FIRSTNAME,
+    LASTNAME
+FROM
+    personTable
+GROUP BY
+    FIRSTNAME,
+    LASTNAME
 ```
 
 </td>
