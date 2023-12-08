@@ -61,3 +61,63 @@ The proposed approach is to integrate Calcite optimizer into Legend platform as 
 | Phoneix        | :x:                | :white_check_mark: |
 | Teradata       | :x:                | :white_check_mark: |
 | Vertica        | :x:                | :white_check_mark: |
+
+
+## Optimizations
+
+### Unused field trimming
+
+<table width="100%">
+<tr>
+<th width="30%">Input SQL</th>
+<th width="70%">Optimized SQL</th>
+</tr>
+<tr>
+<td>
+
+```sql
+
+SELECT
+  unionBase."name" AS "name"
+FROM
+  (
+    SELECT
+      root.ID AS "pk_0_0",
+      NULL AS "pk_0_1",
+      root.lastName_s1 AS "name"
+    FROM
+      PersonSet1 AS root
+    UNION ALL
+    SELECT
+      NULL AS "pk_0_0",
+      root.ID AS "pk_0_1",
+      root.lastName_s2 AS "name"
+    FROM
+      PersonSet2 AS root
+  ) AS unionBase
+```
+
+</td>
+<td>
+
+    
+```sql
+SELECT
+    *
+FROM
+    (
+        SELECT
+            lastName_s1 AS "name"
+        FROM
+            PersonSet1
+        UNION ALL
+        SELECT
+            lastName_s2 AS "name"
+        FROM
+            PersonSet2
+    )
+```
+
+</td>
+</tr>
+</table>
