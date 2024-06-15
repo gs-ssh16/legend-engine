@@ -2712,9 +2712,23 @@ function <<access.private>> meta::relational::functions::pureToSqlQuery::isolate
 
 function <<access.private>> meta::relational::functions::pureToSqlQuery::isolateTdsSelect(select:TdsSelectSqlQuery[1], query:SelectWithCursor[1], extensions:Extension[*]):SelectWithCursor[1]
 {
-  let newNode = ^RootJoinTreeNode(alias=^TableAlias(name = 'subselect', relationalElement=$select->pushExtraFilteringOperation($extensions)));
+  let alias = ^TableAlias(name = 'subselect', relationalElement=$select->pushExtraFilteringOperation($extensions));
+  let newNode = ^RootJoinTreeNode(alias=$alias);
   ^$query(select = ^TdsSelectSqlQuery(data = $newNode,
-                                      columns = $select.columns->map(c|^Alias(name=$c->cast(@Alias).name, relationalElement=^ColumnName(name=$c->cast(@Alias).name))),
+                                      columns = $select.columns->map({c |
+                                        let columnType = $c->cast(@Alias).relationalElement->match([
+                                          t: TableAliasColumn[1] | $t.column.type,
+                                          a: Any[*]              | []
+                                        ]);
+                                        ^Alias(
+                                          name = $c->cast(@Alias).name,
+                                          relationalElement = if ($columnType->isNotEmpty(),
+                                                                  | // If column type could be inferred, create TableAliasColumn, else fallback to existing logic of creating a ColumnName
+                                                                    ^TableAliasColumn(alias=$alias, column=^Column(name=$c->cast(@Alias).name, type=$columnType->toOne())),
+                                                                  | ^ColumnName(name=$c->cast(@Alias).name)
+                                                              )
+                                        );
+                                      }),
                                       paths = $select.paths
                   ),
           currentTreeNode = if($query.currentTreeNode->isEmpty(),| $query.currentTreeNode,| $query.currentTreeNode->toOne()->findOneNode($select.data->toOne(), $newNode))
