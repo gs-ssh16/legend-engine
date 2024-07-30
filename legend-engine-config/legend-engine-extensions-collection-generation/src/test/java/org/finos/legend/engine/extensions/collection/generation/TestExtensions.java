@@ -538,7 +538,6 @@ public class TestExtensions
                 .with("core_external_format_arrow")
                 .with("core_external_query_graphql")
                 .with("core_external_query_graphql_metamodel")
-                .with("core_external_query_sql_metamodel")
                 .with("core_function_activator")
                 .with("core_functions_standard")
                 .with("core_functions_relation")

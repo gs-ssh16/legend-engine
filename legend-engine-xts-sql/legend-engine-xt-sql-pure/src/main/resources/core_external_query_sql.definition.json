@@ -11,7 +11,6 @@
     "core",
     "core_service",
     "core_relational",
-    "core_external_compiler",
-    "core_external_query_sql_metamodel"
+    "core_external_compiler"
   ]
 }
