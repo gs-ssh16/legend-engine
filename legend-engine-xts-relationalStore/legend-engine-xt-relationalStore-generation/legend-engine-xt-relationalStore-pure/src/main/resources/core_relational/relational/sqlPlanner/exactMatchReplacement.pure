@@ -1,0 +1,35 @@
+// Copyright 2024 Goldman Sachs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+Class meta::relational::sqlPlanner::exactMatchReplacement::SqlExactMatchReplacement
+[
+  $this.originalH2SqlString->meta::pure::functions::hash::hash(meta::pure::functions::hash::HashType.SHA256) == $this.originalH2SqlStringSha256Hash
+]
+{
+  originalH2SqlString: String[1];
+  originalH2SqlStringSha256Hash: String[1];
+  replacementSqlQuery: meta::relational::metamodel::SQLQuery[1];
+}
+
+function meta::relational::sqlPlanner::exactMatchReplacement::executeExactMatchReplacementStrategy(sql: meta::relational::metamodel::SQLQuery[1], extensions: meta::pure::extension::Extension[*]): Pair<Boolean, meta::relational::metamodel::SQLQuery>[1]
+{
+  let exactMatchReplacements = $extensions->map(e | $e.moduleExtension('relational')->cast(@meta::relational::extension::RelationalExtension).relational_sqlPlanner_exactMatchReplacement_extraSqlExactMatchReplacements);
+  let h2SqlString = $sql->meta::relational::functions::sqlQueryToString::sqlQueryToString(meta::relational::runtime::DatabaseType.H2, $extensions);
+  let hash = $h2SqlString->meta::pure::functions::hash::hash(meta::pure::functions::hash::HashType.SHA256);
+  let matchingHashReplacements = $exactMatchReplacements->filter(r | $r.originalH2SqlStringSha256Hash == $hash);
+  $matchingHashReplacements->fold({r, agg |
+    if($agg.first, | $agg, | if($h2SqlString == $r.originalH2SqlString, | pair(true, $r.replacementSqlQuery), | $agg))
+  }, pair(false, $sql));
+}

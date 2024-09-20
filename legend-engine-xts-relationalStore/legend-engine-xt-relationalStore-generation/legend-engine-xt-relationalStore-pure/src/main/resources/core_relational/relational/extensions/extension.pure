@@ -48,6 +48,9 @@ Class meta::relational::extension::RelationalExtension extends ModuleExtension
 
    sqlQueryToString_processOperation : Function<{Nil[1], Format[1], GenerationState[1], Config[1], Extension[*] -> Function<{Nil[1]->String[1]}>[*]}>[0..1];
    sqlQueryToString_isBooleanOperation : Function<{Nil[1] -> Boolean[1]}>[*];
+
+   relational_sqlPlanner_exactMatchReplacement_extraSqlExactMatchReplacements : meta::relational::sqlPlanner::exactMatchReplacement::SqlExactMatchReplacement[*];
+   relational_sqlPlanner_ruleBasedTransformation_extraRuleBasedSqlTransformers : meta::relational::sqlPlanner::ruleBasedTransformation::RuleBasedSqlTransformer[*];
 }
 
 function meta::relational::extension::relationalExtensions() : meta::pure::extension::Extension[*]

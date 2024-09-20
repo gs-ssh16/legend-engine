@@ -1,0 +1,36 @@
+// Copyright 2024 Goldman Sachs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+Class meta::relational::sqlPlanner::ruleBasedTransformation::filterPushDown::FilterPushDownSqlTransformer extends meta::relational::sqlPlanner::ruleBasedTransformation::RuleBasedSqlTransformer
+[
+  $this.name == 'FILTER_PUSH_DOWN',
+  $this.enabledByDefault == true,
+  $this.databaseSupport->instanceOf(meta::relational::sqlPlanner::ruleBasedTransformation::AllDatabaseSupport)
+]
+{
+  transformSqlQuery(select: meta::relational::metamodel::relation::SelectSQLQuery[1], connection: meta::external::store::relational::runtime::DatabaseConnection[1], extensions: meta::pure::extension::Extension[*])
+  {
+    $select->meta::relational::postProcessor::filterPushDown::pushFiltersDownToJoins($extensions).values
+  }: meta::relational::metamodel::relation::SelectSQLQuery[1];
+}
+
+function meta::relational::sqlPlanner::ruleBasedTransformation::filterPushDown::filterPushDownSqlTransformer(): meta::relational::sqlPlanner::ruleBasedTransformation::filterPushDown::FilterPushDownSqlTransformer[1]
+{
+  ^meta::relational::sqlPlanner::ruleBasedTransformation::filterPushDown::FilterPushDownSqlTransformer
+  (
+    name = 'FILTER_PUSH_DOWN',
+    enabledByDefault = true,
+    databaseSupport = ^meta::relational::sqlPlanner::ruleBasedTransformation::AllDatabaseSupport()
+  )
+}

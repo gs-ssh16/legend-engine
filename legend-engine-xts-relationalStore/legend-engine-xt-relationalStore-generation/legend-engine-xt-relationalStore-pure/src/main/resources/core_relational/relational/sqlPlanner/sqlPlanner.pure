@@ -1,0 +1,49 @@
+// Copyright 2024 Goldman Sachs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+/*
+    SQL Planner
+    ===========
+
+    Query planning happens in two stages
+
+      -> Stage 1 - Price match strategy
+      -> Stage 2 - Rule based transformations / optimizations
+
+*/
+
+function meta::relational::sqlPlanner::planSqlQuery(sql: meta::relational::metamodel::SQLQuery[1], connection: meta::external::store::relational::runtime::DatabaseConnection[1], extensions: meta::pure::extension::Extension[*]): meta::relational::metamodel::SQLQuery[1]
+{
+  $sql->match([
+    select: meta::relational::metamodel::relation::SelectSQLQuery[1] | $select->meta::relational::sqlPlanner::planSelectSqlQuery($connection, $extensions),
+    any: Any[*] | $sql
+  ])
+}
+
+function <<access.private>> meta::relational::sqlPlanner::planSelectSqlQuery(select: meta::relational::metamodel::relation::SelectSQLQuery[1], connection: meta::external::store::relational::runtime::DatabaseConnection[1], extensions: meta::pure::extension::Extension[*]): meta::relational::metamodel::relation::SelectSQLQuery[1]
+{
+  // Stage 1 - Check for exact match replacement
+  let exactMatchReplacementResult = $select->meta::relational::sqlPlanner::exactMatchReplacement::executeExactMatchReplacementStrategy($extensions);
+
+  if ($exactMatchReplacementResult.first,
+      | // Found an exact match replacement. Returning the replacement query
+        $exactMatchReplacementResult.second->cast(@meta::relational::metamodel::relation::SelectSQLQuery),
+
+      | // No exact match replacement. Proceeding with further sql planning stages
+        // Stage 2 - Rule based transformations
+        $select->meta::relational::sqlPlanner::ruleBasedTransformation::executeRuleBasedTransformersOnSelectSQLQuery($connection, $extensions)
+  );
+}
+
