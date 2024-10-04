@@ -1,0 +1,84 @@
+// Copyright 2024 Goldman Sachs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import meta::external::query::sql::metamodel::*;
+import meta::external::store::relational::sqlPlanning::*;
+import meta::external::store::relational::sqlPlanning::ruleBasedTransformation::*;
+import meta::external::store::relational::sqlPlanning::utils::*;
+import meta::pure::extension::*;
+
+Class <<typemodifiers.abstract>> meta::external::store::relational::sqlPlanning::ruleBasedTransformation::RuleBasedSqlTransformer
+{
+  name             : String[1];
+  enabledByDefault : Boolean[1];
+  databaseSupport  : DatabaseSupport[1];
+
+  transformSqlQuery(query: Query[1], config: SqlPlanningConfig[1], extensions: Extension[*])
+  {
+    fail('Needs to be implemented in sub classes'); $query;
+  }: Query[1];
+}
+
+Class <<typemodifiers.abstract>> meta::external::store::relational::sqlPlanning::ruleBasedTransformation::DatabaseSupport
+{
+  isDatabaseTypeSupported(dbType: String[1]) { fail('Needs to be implemented in sub classes'); false; }: Boolean[1];
+}
+
+Class meta::external::store::relational::sqlPlanning::ruleBasedTransformation::AllDatabaseSupport extends DatabaseSupport
+{
+  isDatabaseTypeSupported(dbType: String[1]) { true }: Boolean[1];
+}
+
+Class meta::external::store::relational::sqlPlanning::ruleBasedTransformation::LimitedDatabaseSupport extends DatabaseSupport
+{
+  supportedDatabaseTypes: String[*];
+  isDatabaseTypeSupported(dbType: String[1]) { $dbType->in($this.supportedDatabaseTypes) }: Boolean[1];
+}
+
+function meta::external::store::relational::sqlPlanning::ruleBasedTransformation::executeRuleBasedTransformersOnSelectSQLQuery(query: Query[1], config: SqlPlanningConfig[1], extensions: Extension[*]): Query[1]
+{
+  let ruleBasedTransformers = $config->fetchInScopeRuleBasedTransformers($extensions);
+  // TODO: Currently, one pass but can make it multiple passes
+  $ruleBasedTransformers->fold({t, agg |
+    $t->executeSubTypeQualifierAndCast('transformSqlQuery', [list($agg), list($config), list($extensions)], @Query)
+  }, $query);
+}
+
+function <<access.private>> meta::external::store::relational::sqlPlanning::ruleBasedTransformation::fetchInScopeRuleBasedTransformers(config: SqlPlanningConfig[1], extensions: Extension[*]): RuleBasedSqlTransformer[*]
+{
+  let defaultTransformers = meta::external::store::relational::sqlPlanning::ruleBasedTransformation::defaultRuleBasedSqlTransformers();
+  let extensionTransformers = $extensions->map(e | $e.moduleExtension('SqlPlanning')->cast(@SqlPlanningModuleExtension).sqlPlanning_ruleBasedTransformation_extraRuleBasedSqlTransformers);
+
+  let allTransformers = $defaultTransformers->concatenate($extensionTransformers);
+
+  let filteredTransformers = $allTransformers->filter({t |
+    if ($t.databaseSupport->meta::external::store::relational::sqlPlanning::utils::executeSubTypeQualifierAndCast('isDatabaseTypeSupported', list($config.dbType), @Boolean),
+        | // Transformer supported for database type
+          if ($t.enabledByDefault,
+              | // TODO: Check if excluded in connection
+                true,
+              | // TODO: Check if included in connection
+                false
+          ),
+        | false
+    ) 
+  });
+}
+
+function meta::external::store::relational::sqlPlanning::ruleBasedTransformation::defaultRuleBasedSqlTransformers(): RuleBasedSqlTransformer[*]
+{
+  [
+    // meta::external::store::relational::sqlPlanning::ruleBasedTransformation::filterPushDown::filterPushDownSqlTransformer()
+  ]
+}
