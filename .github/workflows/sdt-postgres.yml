@@ -64,8 +64,10 @@ jobs:
           report_paths: '${{ env.PROJECT_DIR }}/target/surefire-reports/*.xml'
           fail_on_failure: true
           summary: true
-          check_name: (SDT) Postgres SQL Dialect Test Report
-          job_name: (SDT) Postgres SQL Dialect Test Report
+          detailed_summary: true
+          include_passed: true
+          check_name: Postgres SDT Report
+          job_name: Postgres SDT Report
 
       - name: Upload CI Event
         if: always()
