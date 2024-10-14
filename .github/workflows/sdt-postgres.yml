@@ -65,11 +65,11 @@ jobs:
 
       - name: Build core_external_store_relational_sql_dialect_translation
         run: |
-          mvn -B -e -DskipTests=true clean install -am -pl ${{ env.PROJECT_DIR }}
+          mvn -B -e -pl ${{ env.PROJECT_DIR }} clean install -am -DskipTests=true 
 
       - name: Run Test_Postgres_SDT
         run: |
-          mvn -B -e surefire:test -Dtest="Test_Postgres_SDT" -pl ${{ env.PROJECT_DIR }}
+          mvn -B -e -pl ${{ env.PROJECT_DIR }} test -Dtest="Test_Postgres_SDT" 
 
       - name: Upload Test Results
         if: always()
