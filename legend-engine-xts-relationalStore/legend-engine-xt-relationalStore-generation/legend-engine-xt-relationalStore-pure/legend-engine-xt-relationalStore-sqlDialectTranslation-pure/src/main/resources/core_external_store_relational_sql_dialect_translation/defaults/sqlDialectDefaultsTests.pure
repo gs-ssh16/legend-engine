@@ -219,17 +219,17 @@ function <<test.Test>> meta::external::store::relational::sqlDialectTranslation:
   assertEquals('101 + 102', $dialect->executeNodeProcessor($e1, $state, $config));
   assertEquals('103 - 104', $dialect->executeNodeProcessor($e2, $state, $config));
   assertEquals('105 * 106', $dialect->executeNodeProcessor($e3, $state, $config));
-  assertEquals('107 / 108', $dialect->executeNodeProcessor($e4, $state, $config));
+  assertEquals('CAST(107 AS DECIMAL) / CAST(108 AS DECIMAL)', $dialect->executeNodeProcessor($e4, $state, $config));
   assertEquals('109 % 110', $dialect->executeNodeProcessor($e5, $state, $config));
   assertEquals('111 ^ 112', $dialect->executeNodeProcessor($e6, $state, $config));
 
   assertEquals('101 + 102 + 101 + 102', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e1, type = ArithmeticType.ADD), $state, $config));
   assertEquals('101 + 102 - 103 - 104', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e2, type = ArithmeticType.SUBTRACT), $state, $config));
   assertEquals('(101 + 102) * (103 - 104)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e2, type = ArithmeticType.MULTIPLY), $state, $config));
-  assertEquals('(105 * 106) / (107 / 108)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e3, right = $e4, type = ArithmeticType.DIVIDE), $state, $config));
-  assertEquals('(101 + 102) * (107 / 108)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e4, type = ArithmeticType.MULTIPLY), $state, $config));
-  assertEquals('(101 + 102) % (107 / 108)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e4, type = ArithmeticType.MODULUS), $state, $config));
-  assertEquals('(101 + 102) ^ (107 / 108)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e4, type = ArithmeticType.POWER), $state, $config));
+  assertEquals('CAST(105 * 106 AS DECIMAL) / CAST(CAST(107 AS DECIMAL) / CAST(108 AS DECIMAL) AS DECIMAL)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e3, right = $e4, type = ArithmeticType.DIVIDE), $state, $config));
+  assertEquals('(101 + 102) * CAST(107 AS DECIMAL) / CAST(108 AS DECIMAL)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e4, type = ArithmeticType.MULTIPLY), $state, $config));
+  assertEquals('(101 + 102) % CAST(107 AS DECIMAL) / CAST(108 AS DECIMAL)', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e4, type = ArithmeticType.MODULUS), $state, $config));
+  assertEquals('(101 + 102) ^ (CAST(107 AS DECIMAL) / CAST(108 AS DECIMAL))', $dialect->executeNodeProcessor(^ArithmeticExpression(left = $e1, right = $e4, type = ArithmeticType.POWER), $state, $config));
 }
 
 function <<test.Test>> meta::external::store::relational::sqlDialectTranslation::defaults::tests::testQualifiedNameReferenceProcessing(): Boolean[1]

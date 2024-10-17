@@ -24,7 +24,7 @@ Class meta::external::store::relational::sqlDialectTranslation::SqlDialect
   quoteConfig: QuoteConfiguration[1];
   nodeProcessors: Map<Class<Node>, NodeProcessor<Node>>[1];
   identifierProcessor: IdentifierProcessor[1];
-  expressionPrecendenceComparator: ExpressionPrecedenceComparator[1];
+  expressionPrecedenceComparator: ExpressionPrecedenceComparator[1];
   keywords: String[*];
 }
 
@@ -44,7 +44,7 @@ Class meta::external::store::relational::sqlDialectTranslation::ExpressionPreced
 {
   // Precedence is currently used to delimit child expressions with parentheses if the parent expression is of higher precedence
   findOperatorType: Function<{meta::external::query::sql::metamodel::Expression[1] -> String[1]}>[1];
-  operatorPrecendence: Map<String, Integer>[1];
+  operatorPrecedence: Map<String, Integer>[1];
 
 
   // Returns
@@ -54,8 +54,8 @@ Class meta::external::store::relational::sqlDialectTranslation::ExpressionPreced
 
   compare(e1: meta::external::query::sql::metamodel::Expression[1], e2: meta::external::query::sql::metamodel::Expression[1])
   {
-    let priority1 = $this.operatorPrecendence->get($this.findOperatorType->eval($e1))->toOne();
-    let priority2 = $this.operatorPrecendence->get($this.findOperatorType->eval($e2))->toOne();
+    let priority1 = $this.operatorPrecedence->get($this.findOperatorType->eval($e1))->toOne();
+    let priority2 = $this.operatorPrecedence->get($this.findOperatorType->eval($e2))->toOne();
     if (
       [
         pair(| $priority1 < $priority2, | 1),
@@ -103,10 +103,10 @@ function meta::external::store::relational::sqlDialectTranslation::executeNodePr
                   | 
                     let e1 = $node->cast(@meta::external::query::sql::metamodel::Expression);
                     let e2 = $parentNode->toOne()->cast(@meta::external::query::sql::metamodel::Expression);
-                    let precedenceResult = $sqlDialect.expressionPrecendenceComparator.compare($e1, $e2);
+                    let precedenceResult = $sqlDialect.expressionPrecedenceComparator.compare($e1, $e2);
                     // Though precedence wise its enough to check precedenceResult < 0, better to wrap in parentheses when dealing with different logical operations (to make SQL more readable)
                     // With divide not always floating points, need to wrap
-                    if ($precedenceResult < 0 || differentLogicalBinaryExpressionTypes($e1, $e2) || $e1->isDivideExpr() || $e2->isDivideExpr(),
+                    if ($precedenceResult < 0 || differentLogicalBinaryExpressionTypes($e1, $e2),
                         | '(' + $processedNode + ')',
                         | $processedNode
                     );,

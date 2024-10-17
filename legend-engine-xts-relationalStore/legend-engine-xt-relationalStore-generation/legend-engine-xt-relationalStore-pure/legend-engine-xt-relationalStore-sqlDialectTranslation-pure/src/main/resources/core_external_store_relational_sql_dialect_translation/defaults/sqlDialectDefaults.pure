@@ -301,9 +301,13 @@ function meta::external::store::relational::sqlDialectTranslation::defaults::ari
 {
   nodeProcessor(
     ArithmeticExpression,
-    {sqlDialect, a, state, config | 
-      let leftExpr = $sqlDialect->executeNodeProcessor($a.left, $a, $state, $config);
-      let rightExpr = $sqlDialect->executeNodeProcessor($a.right, $a, $state, $config);
+    {sqlDialect, a, state, config |
+      let isDivide = $a->isDivideExpr();
+      let castAsDecimalIfDivide = {e: meta::external::query::sql::metamodel::Expression[1] |
+        if ($isDivide, | ^Cast(type = ^ColumnType(name = 'decimal'), expression = $e), | $e)
+      };
+      let leftExpr = $sqlDialect->executeNodeProcessor($castAsDecimalIfDivide->eval($a.left), $a, $state, $config);
+      let rightExpr = $sqlDialect->executeNodeProcessor($castAsDecimalIfDivide->eval($a.right), $a, $state, $config);
       let operator = if(
         [
           pair(|$a.type == ArithmeticType.ADD, | '+'),

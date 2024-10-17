@@ -27,7 +27,7 @@ function meta::external::store::relational::sqlDialectTranslation::postgres::pos
     quoteConfig = postgresQuoteConfiguration(),
     nodeProcessors = postgresDialectNodeProcessors(),
     identifierProcessor = postgresIdentifierProcessor(),
-    expressionPrecendenceComparator = postgresExpressionPrecedenceComparator(),
+    expressionPrecedenceComparator = postgresExpressionPrecedenceComparator(),
     keywords = postgresKeywords()
   )
 }
@@ -162,7 +162,7 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
 {
   ^ExpressionPrecedenceComparator(
     findOperatorType = findOperatorType_default_Expression_1__String_1_,
-    operatorPrecendence = operatorPrecedence_default()
+    operatorPrecedence = operatorPrecedence_default()
   )
 }
 

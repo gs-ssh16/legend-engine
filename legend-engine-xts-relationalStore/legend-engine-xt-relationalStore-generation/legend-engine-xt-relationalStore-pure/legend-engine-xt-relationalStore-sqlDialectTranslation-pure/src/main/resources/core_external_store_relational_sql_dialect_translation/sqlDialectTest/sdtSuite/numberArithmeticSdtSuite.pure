@@ -42,16 +42,8 @@ function <<SDT.test>> meta::external::store::relational::sqlDialectTranslation::
 function <<SDT.test>> meta::external::store::relational::sqlDialectTranslation::sdtSuite::numberArithmetic::divide(): SqlDialectTest[1]
 {
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^DoubleLiteral(value = 202.0), type = ArithmeticType.DIVIDE),
-    0.5
-  )
-}
-
-function <<SDT.test>> meta::external::store::relational::sqlDialectTranslation::sdtSuite::numberArithmetic::divideInteger(): SqlDialectTest[1]
-{
-  testConfigForSimpleExpression(
     ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.DIVIDE),
-    0
+    0.5
   )
 }
 
@@ -65,19 +57,6 @@ function <<SDT.test>> meta::external::store::relational::sqlDialectTranslation::
       type = ArithmeticType.DIVIDE
     ),
     0.5
-  )
-}
-
-function <<SDT.test>> meta::external::store::relational::sqlDialectTranslation::sdtSuite::numberArithmetic::divideComplexCase2(): SqlDialectTest[1]
-{
-  // (101 / 202) / 3  =>  0
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.DIVIDE),
-      right = ^IntegerLiteral(value = 303),
-      type = ArithmeticType.DIVIDE
-    ),
-    0
   )
 }
 
