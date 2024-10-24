@@ -19,7 +19,7 @@ function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArith
 {
   testConfigForSimpleExpression(
     ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.ADD),
-    303
+    3031
   )
 }
 
