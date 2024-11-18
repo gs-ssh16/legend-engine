@@ -18,7 +18,7 @@ import meta::external::store::relational::sdt::framework::*;
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::add(): SqlDialectTest[1]
 {
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.ADD),
+    '101 + 202',
     303
   )
 }
@@ -26,7 +26,7 @@ function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArith
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::subtract(): SqlDialectTest[1]
 {
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.SUBTRACT),
+    '101 - 202',
     -101
   )
 }
@@ -34,7 +34,7 @@ function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArith
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::multiply(): SqlDialectTest[1]
 {
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.MULTIPLY),
+    '101 * 202',
     20402
   )
 }
@@ -42,46 +42,31 @@ function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArith
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::divide(): SqlDialectTest[1]
 {
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.DIVIDE),
+    '101 / 202',
     0.5
   )
 }
 
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::divideComplexCase1(): SqlDialectTest[1]
 {
-  // 101 / (202 * 1.0)  =>  0.5
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^IntegerLiteral(value = 101),
-      right = ^ArithmeticExpression(left = ^IntegerLiteral(value = 202), right = ^DoubleLiteral(value = 1.0), type = ArithmeticType.MULTIPLY),
-      type = ArithmeticType.DIVIDE
-    ),
+    '101 / (202 * 1.0)',
     0.5
   )
 }
 
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::precedence1(): SqlDialectTest[1]
 {
-  // (2 * 3) + 4  =>  10
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^ArithmeticExpression(left = ^IntegerLiteral(value = 2), right = ^IntegerLiteral(value = 3), type = ArithmeticType.MULTIPLY),
-      right = ^IntegerLiteral(value = 4),
-      type = ArithmeticType.ADD
-    ),
+    '(2 * 3) + 4',
     10
   )
 }
 
 function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::precedence2(): SqlDialectTest[1]
 {
-  // 2 * (3 + 4)  =>  14
   testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^IntegerLiteral(value = 2),
-      right = ^ArithmeticExpression(left = ^IntegerLiteral(value = 3), right = ^IntegerLiteral(value = 4), type = ArithmeticType.ADD),
-      type = ArithmeticType.MULTIPLY
-    ),
+    '2 * (3 + 4)',
     14
   )
 }

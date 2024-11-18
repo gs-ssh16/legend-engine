@@ -108,7 +108,9 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
     notExpressionNodeProcessor_default(),
     arithmeticExpressionNodeProcessor_default(),
     columnTypeProcessor_default(),
-    castProcessor_default()
+    castProcessor_default(),
+    negativeNodeProcessor_default(),
+    functionCallProcessor_duckDB()
   ]
 }
 
@@ -159,4 +161,56 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
     // TODO: Update
     'date'
   ]
+}
+
+
+
+// ---------------------------- Function processing -------------------------
+
+function <<access.private>> meta::external::store::relational::sqlDialectTranslation::duckDB::functionCallProcessor_duckDB(): NodeProcessor<FunctionCall>[1]
+{
+  let functionProcessorMap = functionProcessorMap();
+  nodeProcessor(
+    FunctionCall,
+    {sqlDialect, f, state, config | 
+      let functionProcessor = $functionProcessorMap->get($f.name);
+      assert($functionProcessor->isNotEmpty(), | 'Function processing for function - ' + $f.name.parts->joinStrings('.') + ' not defined for DuckDB');
+      $functionProcessorMap->get($f.name).processFunction->toOne()->eval($sqlDialect, $f, $state, $config);
+    },
+    {f | $functionProcessorMap->get($f.name).selfDelimiting->toOne()->eval($f)}
+  );
+}
+
+function <<access.private>> meta::external::store::relational::sqlDialectTranslation::duckDB::functionProcessorMap(): Map<QualifiedName, FunctionProcessor>[1]
+{
+  newMap([
+    pair(^QualifiedName(parts = 'abs'), simpleFunctionProcessor(^QualifiedName(parts = 'abs')))
+  ])
+}
+
+function <<access.private>> meta::external::store::relational::sqlDialectTranslation::duckDB::simpleFunctionProcessor(targetFunctionQualifiedName: QualifiedName[1]): FunctionProcessor[1]
+{
+  functionProcessor(
+    {sqlDialect, f, state, config |
+      assert($f.distinct == false, | 'Distinct function call processing not implemented yet');
+      assert($f.filter->isEmpty(), | 'Filtered function call processing not implemented yet');
+      assert($f.group->isEmpty(), | 'Grouped function call processing not implemented yet');
+      assert($f.orderBy->isEmpty(), | 'Sorted function call processing not implemented yet');
+
+      let sep0 = $state.separatorIfPretty(0, $config);
+      let sep1 = $state.separatorIfPretty(1, $config);
+      
+      let args = $f.arguments->map(a | $sqlDialect->executeNodeProcessor($a, [], $state->increaseLevel(), $config));
+      let noArgIsMultiLine = !($args->isNotEmpty() && $config.formatConfig.pretty && $args->map(a | $a->indexOf($config.formatConfig.lineSeparator) >= 0)->or());
+
+      $sqlDialect->qualifiedName($f.name, $state, $config) + '(' + if($noArgIsMultiLine, | '', | $sep1) +
+      $args->joinStrings(',' + if($noArgIsMultiLine, | ' ', | $state.separator(1, $config))) +
+      + if($noArgIsMultiLine, | '', | $sep0) + ')' +
+      if ($f.window->isNotEmpty(),
+          | ' ' + $sqlDialect->keyword('over', $state, $config) + ' (' + $sep1 + $sqlDialect->executeNodeProcessor($f.window->toOne(), [], $state->increaseLevel(), $config) + $sep0 + ')',
+          | ''
+      );
+    },
+    {n: FunctionCall[1] | true}
+  )
 }

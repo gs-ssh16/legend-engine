@@ -56,12 +56,12 @@ Class meta::external::store::relational::sdt::framework::TestResultRow
   <<equality.Key>> values: Any[*];
 }
 
-function meta::external::store::relational::sdt::framework::collectSDTTestsInPackage(pkg: String[1]): ConcreteFunctionDefinition<{->SqlDialectTest[1]}>[*]
+function meta::external::store::relational::sdt::framework::collectSDTTestsInPackage(pkg: String[1]): ConcreteFunctionDefinition<{->SqlDialectTest[*]}>[*]
 {
   getAllPackageElements($pkg->pathToElement()->cast(@Package), true)
     ->filter(x | $x->hasStereotype('test', SDT))
     ->map(x | $x->match([
-      f: ConcreteFunctionDefinition<{->SqlDialectTest[1]}>[1] | $f,
+      f: ConcreteFunctionDefinition<{->SqlDialectTest[*]}>[1] | $f,
       a: Any[*] | $x->elementToPath() + ' element with stereotype SDT.test not a concrete function definition returning SqlDialectTest[1]'; [];
     ]));
 }
@@ -98,6 +98,12 @@ function <<access.private>> meta::external::store::relational::sdt::framework::t
 function <<access.private>> meta::external::store::relational::sdt::framework::assertSdtTestPasses(sdt: SqlDialectTest[1], actualResult: TestResult[1]): Boolean[1]
 {
   assertEquals($sdt.expectedResult, $actualResult, | 'Expected - ' + $sdt.expectedResult->toJSON(100) + '\n' + 'Actual - ' + $actualResult->toJSON(100));
+}
+
+function meta::external::store::relational::sdt::framework::testConfigForSimpleExpression(expression: String[1], expected: Any[1]): SqlDialectTest[1]
+{
+  let parsedExpression = meta::external::store::relational::postgresSql::parser::parseSqlStatement('SELECT ' + $expression)->cast(@Query).queryBody->cast(@QuerySpecification).select.selectItems->at(0)->cast(@SingleColumn).expression;
+  testConfigForSimpleExpression($parsedExpression, $expected);
 }
 
 function meta::external::store::relational::sdt::framework::testConfigForSimpleExpression(expression: meta::external::query::sql::metamodel::Expression[1], expected: Any[1]): SqlDialectTest[1]

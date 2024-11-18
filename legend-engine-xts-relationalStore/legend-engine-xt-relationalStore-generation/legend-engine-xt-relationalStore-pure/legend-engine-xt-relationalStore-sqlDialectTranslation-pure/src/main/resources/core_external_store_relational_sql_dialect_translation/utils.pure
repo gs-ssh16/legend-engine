@@ -48,6 +48,11 @@ function meta::external::store::relational::sqlDialectTranslation::utils::differ
   ])
 }
 
+function meta::external::store::relational::sqlDialectTranslation::utils::doubleNegation(e1: meta::external::query::sql::metamodel::Expression[1], e2: meta::external::query::sql::metamodel::Expression[1]): Boolean[1]
+{
+  $e1->instanceOf(NegativeExpression) && $e2->instanceOf(NegativeExpression)
+}
+
 function meta::external::store::relational::sqlDialectTranslation::utils::isDivideExpr(e: meta::external::query::sql::metamodel::Expression[1]): Boolean[1]
 {
   $e->match([
