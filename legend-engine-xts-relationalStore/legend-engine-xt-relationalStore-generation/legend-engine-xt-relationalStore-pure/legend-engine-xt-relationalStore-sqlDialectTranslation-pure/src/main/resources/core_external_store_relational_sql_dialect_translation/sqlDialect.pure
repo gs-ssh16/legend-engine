@@ -35,6 +35,13 @@ Class meta::external::store::relational::sqlDialectTranslation::NodeProcessor<T>
   selfDelimiting: Function<{T[1] -> Boolean[1]}>[1];
 }
 
+Class meta::external::store::relational::sqlDialectTranslation::FunctionProcessor
+{
+  processFunction: Function<{SqlDialect[1], FunctionCall[1], SqlDialectTranslationState[1], SqlDialectTranslationConfig[1] -> String[1]}>[1];
+  selfDelimiting: Function<{FunctionCall[1] -> Boolean[1]}>[1];
+}
+
+
 Class meta::external::store::relational::sqlDialectTranslation::IdentifierProcessor
 {
   processFunction: Function<{SqlDialect[1], String[1], Boolean[1], SqlDialectTranslationState[1], SqlDialectTranslationConfig[1] -> String[1]}>[1];
@@ -86,6 +93,15 @@ function meta::external::store::relational::sqlDialectTranslation::nodeProcessor
   )
 }
 
+function meta::external::store::relational::sqlDialectTranslation::functionProcessor<T>(processFunction: Function<{SqlDialect[1], FunctionCall[1], SqlDialectTranslationState[1], SqlDialectTranslationConfig[1] -> String[1]}>[1], selfDelimiting: Function<{T[1] -> Boolean[1]}>[1]): FunctionProcessor[1]
+{
+  ^FunctionProcessor
+  (
+    processFunction = $processFunction,
+    selfDelimiting = $selfDelimiting
+  )
+}
+
 function meta::external::store::relational::sqlDialectTranslation::executeNodeProcessor(sqlDialect: SqlDialect[1], node: Node[1], state: SqlDialectTranslationState[1], config: SqlDialectTranslationConfig[1]): String[1]
 {
   $sqlDialect->executeNodeProcessor($node, [], $state, $config)
@@ -106,7 +122,7 @@ function meta::external::store::relational::sqlDialectTranslation::executeNodePr
                     let precedenceResult = $sqlDialect.expressionPrecedenceComparator.compare($e1, $e2);
                     // Though precedence wise its enough to check precedenceResult < 0, better to wrap in parentheses when dealing with different logical operations (to make SQL more readable)
                     // With divide not always floating points, need to wrap
-                    if ($precedenceResult < 0 || differentLogicalBinaryExpressionTypes($e1, $e2),
+                    if ($precedenceResult < 0 || differentLogicalBinaryExpressionTypes($e1, $e2) || doubleNegation($e1, $e2) || $e1->isDivideExpr() || $e2->isDivideExpr(),
                         | '(' + $processedNode + ')',
                         | $processedNode
                     );,

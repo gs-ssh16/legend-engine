@@ -32,7 +32,6 @@ function meta::external::store::relational::sqlDialectTranslation::postgres::pos
   )
 }
 
-
 function meta::external::store::relational::sqlDialectTranslation::postgres::postgresSqlDialectExtension(): Extension[1]
 {
   ^Extension
@@ -46,6 +45,42 @@ function meta::external::store::relational::sqlDialectTranslation::postgres::pos
       )
     ]
   )
+}
+
+function meta::external::store::relational::sqlDialectTranslation::postgres::postgresSdtExclusions(): Pair<String, List<String>>[*]
+{
+  [
+    pair(
+      'meta::external::store::relational::sdt::suite::mathFunctions::factorial__SqlDialectTest_MANY_',
+      [
+        'Expected - {"columnNames":["result"],"rows":[{"values":[6]}]}\nActual - {"columnNames":["result"],"rows":[{"values":[6.0]}]}'
+      ]->list()
+    ),
+    pair(
+      'meta::external::store::relational::sdt::suite::mathFunctions::gcd__SqlDialectTest_MANY_',
+      [
+        'Postgres SQL Dialect does not support the function - gcd'
+      ]->list()
+    ),
+    pair(
+      'meta::external::store::relational::sdt::suite::mathFunctions::lcm__SqlDialectTest_MANY_',
+      [
+        'Postgres SQL Dialect does not support the function - lcm'
+      ]->list()
+    ),
+    pair(
+      'meta::external::store::relational::sdt::suite::mathFunctions::log10__SqlDialectTest_MANY_',
+      [
+        'Postgres SQL Dialect does not support the function - log10'
+      ]->list()
+    ),
+    pair(
+      'meta::external::store::relational::sdt::suite::mathFunctions::sign__SqlDialectTest_MANY_',
+      [
+        'Expected - {"columnNames":["result"],"rows":[{"values":[1]}]}\nActual - {"columnNames":["result"],"rows":[{"values":[1.0]}]}'
+      ]->list()
+    )
+  ]
 }
 
 function <<access.private>> meta::external::store::relational::sqlDialectTranslation::postgres::postgresQuoteConfiguration(): QuoteConfiguration[1]
@@ -121,7 +156,7 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
     inPredicateProcessor_default(),
     extractProcessor_default(),
     betweenPredicateProcessor_default(),
-    functionCallProcessor_default(),
+    functionCallProcessor_postgres(),
     subQueryExpressionProcessor_default()
   ]
 }
@@ -174,3 +209,88 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
     'date'
   ]
 }
+
+// ---------------------------- Function processing -------------------------
+
+function <<access.private>> meta::external::store::relational::sqlDialectTranslation::postgres::functionCallProcessor_postgres(): NodeProcessor<FunctionCall>[1]
+{
+  let supportedFunctionsMap = supportedFunctions()->map(x | pair($x, $x))->newMap();
+
+  nodeProcessor(
+    FunctionCall,
+    {sqlDialect, f, state, config |
+      assert($f.distinct == false, | 'Distinct function call processing not implemented yet');
+      assert($f.filter->isEmpty(), | 'Filtered function call processing not implemented yet');
+      assert($f.group->isEmpty(), | 'Grouped function call processing not implemented yet');
+      assert($f.orderBy->isEmpty(), | 'Sorted function call processing not implemented yet');
+
+      let funcName = $f.name.parts->joinStrings('.');
+      assert($supportedFunctionsMap->get($funcName->toLower())->isNotEmpty(), | 'Postgres SQL Dialect does not support the function - ' + $funcName);
+
+      let sep0 = $state.separatorIfPretty(0, $config);
+      let sep1 = $state.separatorIfPretty(1, $config);
+      
+      let args = $f.arguments->map(a | $sqlDialect->executeNodeProcessor($a, [], $state->increaseLevel(), $config));
+      let noArgIsMultiLine = !($args->isNotEmpty() && $config.formatConfig.pretty && $args->map(a | $a->indexOf($config.formatConfig.lineSeparator) >= 0)->or());
+
+      $sqlDialect->qualifiedName($f.name, $state, $config) + '(' + if($noArgIsMultiLine, | '', | $sep1) +
+      $args->joinStrings(',' + if($noArgIsMultiLine, | ' ', | $state.separator(1, $config))) +
+      + if($noArgIsMultiLine, | '', | $sep0) + ')' +
+      if ($f.window->isNotEmpty(),
+          | ' ' + $sqlDialect->keyword('over', $state, $config) + ' (' + $sep1 + $sqlDialect->executeNodeProcessor($f.window->toOne(), [], $state->increaseLevel(), $config) + $sep0 + ')',
+          | ''
+      );
+    },
+    {n | true}
+  );
+}
+
+function <<access.private>> meta::external::store::relational::sqlDialectTranslation::postgres::supportedFunctions(): String[*]
+{
+  [
+    // Math
+    'abs',
+    'cbrt',
+    'ceil',
+    'ceiling',
+    'div',
+    'exp',
+    'factorial',
+    'floor',
+    'ln',
+    'log',
+    'mod',
+    'pow',
+    'round',
+    'sign',
+    'scale',
+    'sqrt',
+
+    // Trigonometric
+    'pi',
+    'radians',
+    'degrees',
+    'sin',
+    'asin',
+    'cos',
+    'acos',
+    'tan',
+    'atan',
+    'cot',
+    'atan2',
+
+    // String
+    'ascii',
+    'chr',
+
+    // Hash
+    'md5',
+
+    // Conditional
+    'case',
+    'coalesce'
+
+  ]
+}
+
+// --------------------------------------------------------------------------

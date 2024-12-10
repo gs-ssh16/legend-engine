@@ -15,73 +15,46 @@
 import meta::external::query::sql::metamodel::*;
 import meta::external::store::relational::sdt::framework::*;
 
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::add(): SqlDialectTest[1]
+function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::add(): SqlDialectTest[*]
 {
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.ADD),
-    303
-  )
+  [
+    testConfigForSimpleExpression('101 + 202', 303),
+    testConfigForSimpleExpression('101 + 202.0', 303.0)
+  ]
 }
 
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::subtract(): SqlDialectTest[1]
+function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::subtract(): SqlDialectTest[*]
 {
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.SUBTRACT),
-    -101
-  )
+  [
+    testConfigForSimpleExpression('101 - 202', -101),
+    testConfigForSimpleExpression('101 - 202.0', -101.0)
+  ]
 }
 
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::multiply(): SqlDialectTest[1]
+function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::multiply(): SqlDialectTest[*]
 {
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.MULTIPLY),
-    20402
-  )
+  [
+    testConfigForSimpleExpression('101 * 202', 20402),
+    testConfigForSimpleExpression('101 * 202.0', 20402.0)
+  ]
 }
 
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::divide(): SqlDialectTest[1]
+function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::divide(): SqlDialectTest[*]
 {
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(left = ^IntegerLiteral(value = 101), right = ^IntegerLiteral(value = 202), type = ArithmeticType.DIVIDE),
-    0.5
-  )
+  [
+    testConfigForSimpleExpression('101 / 202', 0),
+    testConfigForSimpleExpression('101 / cast(202 as decimal)', 0.5),
+    testConfigForSimpleExpression('div(4, 3)', 1.0),
+    testConfigForSimpleExpression('div(4.0::decimal, 3::decimal)', 1.0) 
+  ]
 }
 
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::divideComplexCase1(): SqlDialectTest[1]
+function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::arithmeticOperatorPrecedence(): SqlDialectTest[*]
 {
-  // 101 / (202 * 1.0)  =>  0.5
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^IntegerLiteral(value = 101),
-      right = ^ArithmeticExpression(left = ^IntegerLiteral(value = 202), right = ^DoubleLiteral(value = 1.0), type = ArithmeticType.MULTIPLY),
-      type = ArithmeticType.DIVIDE
-    ),
-    0.5
-  )
-}
-
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::precedence1(): SqlDialectTest[1]
-{
-  // (2 * 3) + 4  =>  10
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^ArithmeticExpression(left = ^IntegerLiteral(value = 2), right = ^IntegerLiteral(value = 3), type = ArithmeticType.MULTIPLY),
-      right = ^IntegerLiteral(value = 4),
-      type = ArithmeticType.ADD
-    ),
-    10
-  )
-}
-
-function <<SDT.test>> meta::external::store::relational::sdt::suite::numberArithmetic::precedence2(): SqlDialectTest[1]
-{
-  // 2 * (3 + 4)  =>  14
-  testConfigForSimpleExpression(
-    ^ArithmeticExpression(
-      left = ^IntegerLiteral(value = 2),
-      right = ^ArithmeticExpression(left = ^IntegerLiteral(value = 3), right = ^IntegerLiteral(value = 4), type = ArithmeticType.ADD),
-      type = ArithmeticType.MULTIPLY
-    ),
-    14
-  )
+  [
+    testConfigForSimpleExpression('(2 * 3) + 4', 10),
+    testConfigForSimpleExpression('2 * (3 + 4)', 14),
+    testConfigForSimpleExpression('2 * 2 / 3', 1),
+    testConfigForSimpleExpression('2 * (2 / 3)', 0)
+  ]
 }

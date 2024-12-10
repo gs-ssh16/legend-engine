@@ -71,6 +71,11 @@
                         <artifactId>legend-engine-xt-relationalStore-sqlDialectTranslation-pure</artifactId>
                         <version>${project.version}</version>
                     </dependency>
+                    <dependency>
+                        <groupId>org.finos.legend.engine</groupId>
+                        <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-relationalStore-postgresSql-parser</artifactId>
+                        <version>${project.version}</version>
+                    </dependency>
                 </dependencies>
             </plugin>
             <plugin>
@@ -114,6 +119,11 @@
                         <artifactId>legend-engine-xt-relationalStore-sqlDialectTranslation-pure</artifactId>
                         <version>${project.version}</version>
                     </dependency>
+                    <dependency>
+                        <groupId>org.finos.legend.engine</groupId>
+                        <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-relationalStore-postgresSql-parser</artifactId>
+                        <version>${project.version}</version>
+                    </dependency>
                 </dependencies>
             </plugin>
             <plugin>
@@ -121,8 +131,8 @@
                 <configuration>
                     <useSystemClassLoader>false</useSystemClassLoader>
                     <excludes>
-                        <exclude>**/Test_Postgres_SDT*.java</exclude>
-                        <exclude>**/SdtTestSuiteBuilder*.java</exclude>
+<!--                        <exclude>**/Test_Postgres_SDT*.java</exclude>-->
+<!--                        <exclude>**/SdtTestSuiteBuilder*.java</exclude>-->
                     </excludes>
                 </configuration>
             </plugin>
@@ -196,6 +206,10 @@
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-xt-relationalStore-sqlDialectTranslation-pure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-relationalStore-postgresSql-parser</artifactId>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>

@@ -1,0 +1,56 @@
+// Copyright 2024 Goldman Sachs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import meta::external::query::sql::metamodel::*;
+import meta::external::store::relational::sdt::framework::*;
+
+function <<SDT.test>> meta::external::store::relational::sdt::suite::constants::number(): SqlDialectTest[*]
+{
+  [
+    testConfigForSimpleExpression('1', 1),
+    testConfigForSimpleExpression('1.0', 1.0)
+  ]
+}
+
+function <<SDT.test>> meta::external::store::relational::sdt::suite::constants::string(): SqlDialectTest[*]
+{
+  [
+    testConfigForSimpleExpression('\'abc\'', 'abc'),
+    testConfigForSimpleExpression('\'ab\'\'c\'', 'ab\'c')
+  ]
+}
+
+function <<SDT.test>> meta::external::store::relational::sdt::suite::constants::boolean(): SqlDialectTest[*]
+{
+  [
+    testConfigForSimpleExpression('true', true),
+    testConfigForSimpleExpression('false', false)
+  ]
+}
+
+function <<SDT.test>> meta::external::store::relational::sdt::suite::constants::null(): SqlDialectTest[*]
+{
+  [
+    testConfigForSimpleExpression('null', ^meta::relational::metamodel::SQLNull())
+  ]
+}
+
+function <<SDT.test>> meta::external::store::relational::sdt::suite::constants::date(): SqlDialectTest[*]
+{
+  [
+    testConfigForSimpleExpression('Date\'2024-10-10\'', %2024-10-10),
+    testConfigForSimpleExpression('Timestamp\'2024-10-10 12:00:00\'', %2024-10-10T12:00:00.000000000+0000),
+    testConfigForSimpleExpression('Timestamp\'2024-10-10 12:00:00.123\'', %2024-10-10T12:00:00.123000000+0000)
+  ]
+}
