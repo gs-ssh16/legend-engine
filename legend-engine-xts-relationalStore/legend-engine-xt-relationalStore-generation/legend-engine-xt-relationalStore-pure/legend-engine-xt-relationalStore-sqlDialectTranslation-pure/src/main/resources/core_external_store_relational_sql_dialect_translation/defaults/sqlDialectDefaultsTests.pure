@@ -25,16 +25,6 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
   postgresSqlDialect() // Postgres is default. Hence using Postgres dialect for testing defaults
 }
 
-function meta::external::store::relational::sqlDialectTranslation::defaults::tests::literal(a: Any[1]): Literal[1]
-{
-  $a->match([
-    i: Integer[1] | ^IntegerLiteral(value = $i),
-    i: Float[1] | ^DoubleLiteral(value = $i),
-    s: String[1] | ^StringLiteral(value = $s),
-    b: Boolean[1] | ^BooleanLiteral(value = $b)
-  ])
-}
-
 function meta::external::store::relational::sqlDialectTranslation::defaults::tests::testSqlDialectTranslationState(): SqlDialectTranslationState[1]
 {
   ^SqlDialectTranslationState

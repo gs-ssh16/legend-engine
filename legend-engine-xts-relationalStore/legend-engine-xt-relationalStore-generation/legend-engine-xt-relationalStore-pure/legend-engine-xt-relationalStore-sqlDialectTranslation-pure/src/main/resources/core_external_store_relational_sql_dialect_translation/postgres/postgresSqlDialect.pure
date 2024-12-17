@@ -15,7 +15,9 @@
 import meta::external::query::sql::metamodel::*;
 import meta::external::store::relational::sqlDialectTranslation::*;
 import meta::external::store::relational::sqlDialectTranslation::defaults::*;
+import meta::external::store::relational::sqlDialectTranslation::functionRegistry::*;
 import meta::external::store::relational::sqlDialectTranslation::postgres::*;
+import meta::external::store::relational::sqlDialectTranslation::sqlTyping::typeInference::*;
 import meta::external::store::relational::sqlDialectTranslation::utils::*;
 import meta::pure::extension::*;
 
@@ -214,8 +216,6 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
 
 function <<access.private>> meta::external::store::relational::sqlDialectTranslation::postgres::functionCallProcessor_postgres(): NodeProcessor<FunctionCall>[1]
 {
-  let supportedFunctionsMap = supportedFunctions()->map(x | pair($x, $x))->newMap();
-
   nodeProcessor(
     FunctionCall,
     {sqlDialect, f, state, config |
@@ -224,8 +224,7 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
       assert($f.group->isEmpty(), | 'Grouped function call processing not implemented yet');
       assert($f.orderBy->isEmpty(), | 'Sorted function call processing not implemented yet');
 
-      let funcName = $f.name.parts->joinStrings('.');
-      assert($supportedFunctionsMap->get($funcName->toLower())->isNotEmpty(), | 'Postgres SQL Dialect does not support the function - ' + $funcName);
+      assert($f->cast(@TypedFunctionCall).sqlFunction->instanceOf(PostgresNativeSqlFunction), | 'Postgres SQL Dialect does not support the function - ' + $f.name.parts->joinStrings('.')->toLower());
 
       let sep0 = $state.separatorIfPretty(0, $config);
       let sep1 = $state.separatorIfPretty(1, $config);
@@ -243,54 +242,6 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
     },
     {n | true}
   );
-}
-
-function <<access.private>> meta::external::store::relational::sqlDialectTranslation::postgres::supportedFunctions(): String[*]
-{
-  [
-    // Math
-    'abs',
-    'cbrt',
-    'ceil',
-    'ceiling',
-    'div',
-    'exp',
-    'factorial',
-    'floor',
-    'ln',
-    'log',
-    'mod',
-    'pow',
-    'round',
-    'sign',
-    'scale',
-    'sqrt',
-
-    // Trigonometric
-    'pi',
-    'radians',
-    'degrees',
-    'sin',
-    'asin',
-    'cos',
-    'acos',
-    'tan',
-    'atan',
-    'cot',
-    'atan2',
-
-    // String
-    'ascii',
-    'chr',
-
-    // Hash
-    'md5',
-
-    // Conditional
-    'case',
-    'coalesce'
-
-  ]
 }
 
 // --------------------------------------------------------------------------

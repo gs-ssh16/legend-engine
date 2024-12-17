@@ -1,0 +1,110 @@
+// Copyright 2024 Goldman Sachs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import meta::external::query::sql::metamodel::*;
+import meta::external::store::relational::sqlDialectTranslation::*;
+import meta::external::store::relational::sqlDialectTranslation::functionRegistry::*;
+import meta::external::store::relational::sqlDialectTranslation::sqlTyping::sqlTypes::*;
+
+Class <<typemodifiers.abstract>> meta::external::store::relational::sqlDialectTranslation::functionRegistry::SqlFunction
+[
+  parameterCountNonNegative: $this.parameterCount >= 0,
+  testsWithMatchingFunction: $this.tests->size()->range()->forAll({i |
+    let thisTest = $this.tests->at($i);
+    if ($thisTest.functionCall.name.parts == $this.name,
+        | true,
+        | println('SqlFunctionTest at index ' + toString($i) + ' for function "' + $this.name->joinStrings('.') + '" is for a different function "' + $thisTest.functionCall.name.parts->joinStrings('.') + '"');
+          false;
+    );
+  })
+]
+{
+  name: String[*];
+  parameterCount: Integer[1];
+  parameterTypeMatchFunc: Function<{Class<SqlType>[*] -> Boolean[1]}>[1];
+  returnTypeFunc: Function<{Class<SqlType>[*] -> Class<SqlType>[1]}>[1];
+  tests: SqlFunctionTest[1..*];
+}
+
+Class <<typemodifiers.abstract>> meta::external::store::relational::sqlDialectTranslation::functionRegistry::PostgresNativeSqlFunction extends SqlFunction
+{
+}
+
+Class <<typemodifiers.abstract>> meta::external::store::relational::sqlDialectTranslation::functionRegistry::ExtensionSqlFunction extends SqlFunction
+{
+}
+
+Class meta::external::store::relational::sqlDialectTranslation::functionRegistry::SqlFunctionTest
+{
+  functionCall: FunctionCall[1];
+  result: Any[*];
+}
+
+function meta::external::store::relational::sqlDialectTranslation::functionRegistry::sqlFunctionTest(functionCall: FunctionCall[1], result: Any[*]): SqlFunctionTest[1]
+{
+  ^SqlFunctionTest
+  (
+    functionCall = $functionCall,
+    result = $result
+  )
+}
+
+function meta::external::store::relational::sqlDialectTranslation::functionRegistry::sqlFunctionRegistry(): Map<String, List<SqlFunction>>[*]
+{
+  [
+    // Numeric
+    meta::external::store::relational::sqlDialectTranslation::functionRegistry::numericFunctions::abs(),
+    meta::external::store::relational::sqlDialectTranslation::functionRegistry::numericFunctions::log(),
+    meta::external::store::relational::sqlDialectTranslation::functionRegistry::numericFunctions::logWithBase(),
+    meta::external::store::relational::sqlDialectTranslation::functionRegistry::numericFunctions::log10()
+  ]->groupBy(x | $x.name->joinStrings('.')->toLower())
+}
+
+
+
+// function meta::external::store::relational::sqlDialectTranslation::functionRegistry::postgresNativeSqlFunction(
+//   name: String[*],
+//   parameterCount: Integer[1],
+//   parameterTypeMatchFunc: Function<{Class<SqlType>[*] -> Boolean[1]}>[1],
+//   returnTypeFunc: Function<{Class<SqlType>[*] -> Class<SqlType>[1]}>[1],
+//   tests: SqlFunctionTest[1..*]
+// ): PostgresNativeSqlFunction[1]
+// {
+//   ^PostgresNativeSqlFunction
+//   (
+//     name = $name,
+//     parameterCount = $parameterCount,
+//     parameterTypeMatchFunc = $parameterTypeMatchFunc,
+//     returnTypeFunc = $returnTypeFunc,
+//     tests = $tests
+//   )
+// }
+
+// function meta::external::store::relational::sqlDialectTranslation::functionRegistry::extensionSqlFunction(
+//   name: String[*],
+//   parameterCount: Integer[1],
+//   parameterTypeMatchFunc: Function<{Class<SqlType>[*] -> Boolean[1]}>[1],
+//   returnTypeFunc: Function<{Class<SqlType>[*] -> Class<SqlType>[1]}>[1],
+//   tests: SqlFunctionTest[1..*]
+// ): ExtensionSqlFunction[1]
+// {
+//   ^ExtensionSqlFunction
+//   (
+//     name = $name,
+//     parameterCount = $parameterCount,
+//     parameterTypeMatchFunc = $parameterTypeMatchFunc,
+//     returnTypeFunc = $returnTypeFunc,
+//     tests = $tests
+//   )
+// }

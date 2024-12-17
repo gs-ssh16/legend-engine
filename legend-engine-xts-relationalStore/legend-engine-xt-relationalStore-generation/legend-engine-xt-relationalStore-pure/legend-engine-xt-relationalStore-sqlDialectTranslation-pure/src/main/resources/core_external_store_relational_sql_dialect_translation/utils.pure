@@ -60,3 +60,23 @@ function meta::external::store::relational::sqlDialectTranslation::utils::isDivi
     a: Any[*] | false
   ])
 }
+
+function meta::external::store::relational::sqlDialectTranslation::utils::simpleFunctionCall(name: String[*], arguments: meta::external::query::sql::metamodel::Expression[*]): FunctionCall[1]
+{
+  ^FunctionCall
+  (
+    name = ^QualifiedName(parts = $name),
+    arguments = $arguments,
+    distinct = false
+  )
+}
+
+function meta::external::store::relational::sqlDialectTranslation::utils::literal(a: Any[1]): Literal[1]
+{
+  $a->match([
+    i: Integer[1] | ^IntegerLiteral(value = $i),
+    i: Float[1] | ^DoubleLiteral(value = $i),
+    s: String[1] | ^StringLiteral(value = $s),
+    b: Boolean[1] | ^BooleanLiteral(value = $b)
+  ])
+}

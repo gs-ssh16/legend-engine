@@ -15,7 +15,10 @@
 import meta::external::query::sql::metamodel::*;
 import meta::external::store::relational::sqlDialectTranslation::*;
 import meta::external::store::relational::sqlDialectTranslation::defaults::*;
+import meta::external::store::relational::sqlDialectTranslation::functionRegistry::*;
+import meta::external::store::relational::sqlDialectTranslation::functionRegistry::numericFunctions::*;
 import meta::external::store::relational::sqlDialectTranslation::duckDB::*;
+import meta::external::store::relational::sqlDialectTranslation::sqlTyping::typeInference::*;
 import meta::external::store::relational::sqlDialectTranslation::utils::*;
 import meta::pure::extension::*;
 
@@ -211,7 +214,7 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
     FunctionCall,
     {sqlDialect, f, state, config | 
       let funcName = $f.name.parts->joinStrings('.');
-      let functionProcessor = $functionProcessorMap->get($funcName);
+      let functionProcessor = $functionProcessorMap->get($f->cast(@TypedFunctionCall).sqlFunction->type());
       assert($functionProcessor->isNotEmpty(), | 'DuckDB SQL Dialect does not support the function - ' + $funcName);
       $functionProcessor->toOne().processFunction->toOne()->eval($sqlDialect, $f, $state, $config);
     },
@@ -219,51 +222,14 @@ function <<access.private>> meta::external::store::relational::sqlDialectTransla
   );
 }
 
-function <<access.private>> meta::external::store::relational::sqlDialectTranslation::duckDB::functionProcessorMap(): Map<String, FunctionProcessor>[1]
+function <<access.private>> meta::external::store::relational::sqlDialectTranslation::duckDB::functionProcessorMap(): Map<Class<SqlFunction>, FunctionProcessor>[1]
 {
   newMap([
     // Math
-    pair('abs', simpleFunctionProcessor('abs')),
-    pair('cbrt', simpleFunctionProcessor('cbrt')),
-    pair('ceil', simpleFunctionProcessor('ceil')),
-    pair('ceiling', simpleFunctionProcessor('ceiling')),
-    pair('div', simpleFunctionProcessor('fdiv')),
-    pair('exp', simpleFunctionProcessor('exp')),
-    pair('factorial', simpleFunctionProcessor('factorial')),
-    pair('floor', simpleFunctionProcessor('floor')),
-    pair('gcd', simpleFunctionProcessor('gcd')),
-    pair('lcm', simpleFunctionProcessor('lcm')),
-    pair('ln', simpleFunctionProcessor('ln')),
-    pair('log', simpleFunctionProcessor('log')),
-    pair('log10', simpleFunctionProcessor('log10')),
-    pair('mod', simpleFunctionProcessor('mod')),
-    pair('pow', simpleFunctionProcessor('pow')),
-    pair('round', simpleFunctionProcessor('round')),
-    pair('sign', simpleFunctionProcessor('sign')),
-    pair('sqrt', simpleFunctionProcessor('sqrt')),
-    
-    // Trigonometric
-    pair('pi', simpleFunctionProcessor('pi')),
-    pair('radians', simpleFunctionProcessor('radians')),
-    pair('degrees', simpleFunctionProcessor('degrees')),
-    pair('sin', simpleFunctionProcessor('sin')),
-    pair('asin', simpleFunctionProcessor('asin')),
-    pair('cos', simpleFunctionProcessor('cos')),
-    pair('acos', simpleFunctionProcessor('acos')),
-    pair('tan', simpleFunctionProcessor('tan')),
-    pair('atan', simpleFunctionProcessor('atan')),
-    pair('cot', simpleFunctionProcessor('cot')),
-    pair('atan2', simpleFunctionProcessor('atan2')),
-
-    // String
-    pair('ascii', simpleFunctionProcessor('ascii')),
-    pair('chr', simpleFunctionProcessor('chr')),
-
-    // Hash
-    pair('md5', simpleFunctionProcessor('md5')),
-
-    // Conditional
-    pair('coalesce', simpleFunctionProcessor('coalesce'))
+    pair(Abs, simpleFunctionProcessor('abs')),
+    pair(Log, simpleFunctionProcessor('log')),
+    pair(LogWithBase, simpleFunctionProcessor('log')),
+    pair(Log10, simpleFunctionProcessor('log10'))
   ])
 }
 
