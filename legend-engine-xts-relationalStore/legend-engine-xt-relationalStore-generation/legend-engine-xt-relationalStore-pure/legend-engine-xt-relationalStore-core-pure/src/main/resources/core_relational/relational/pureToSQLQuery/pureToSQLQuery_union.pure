@@ -144,7 +144,7 @@ function meta::relational::functions::pureToSqlQuery::union::managePrimaryKeys(a
                                                                 let column = $p->cast(@TableAliasColumn).column;
                                                                 let relationalElement = if($state.importDataFlowImplementationCount->isEmpty(), |$column.type->getDefaultLiteralValue(), |$sqlNull);
                                                                 ^Alias(name='"'+$column.name+'_'+$setImpls->indexOf($s)->toString()+'"', relationalElement = $relationalElement);),
-                                                              |range(0, $s->resolvePrimaryKey()->size(), 1)->map(p| ^Alias(name='"pk_'+$p->toString()+'_'+$setImpls->indexOf($s)->toString()+'"', relationalElement = $sqlNull))
+                                                              |range(0, $s->resolvePrimaryKey()->size(), 1)->map(p| ^Alias(name=unionPkColumnAlias($p, $setImpls->indexOf($s)), relationalElement = $sqlNull))
                                                            )
 
                                                       )
@@ -511,42 +511,59 @@ function meta::relational::functions::pureToSqlQuery::union::buildUnionJoin(rela
 
                                                                               let updatedJoinTreeNode = $joinTreeNode->reprocessJoinTreeNode($curried, true, $sourceRelation, ^TableAlias(name='fakeAlias', relationalElement=$reprocessedTargetAlias.relationalElement));
                                                                               print(if(!$context.debug,| '',| $context.space+'     [After]: '+$updatedJoinTreeNode->printRelationalTreeNode($extensions)+'\n'));
-                                                                              $updatedJoinTreeNode;
+                                                                              pair($x, $updatedJoinTreeNode);
    );
 
    print(if(!$context.debug,| '',| $context.space+'  - Merging '+$updatedJoinTreeNodes->size()->toString()+' JoinTreeNodes\n'));
-   pair($reprocessedSourceAlias, pair($updatedJoinTreeNodes->simplyMergeJoinTreeNodeUsingOrOperation($extensions)->toOne(), $reprocessedTargetAlias.relationalElement->cast(@Relation)));
+   pair($reprocessedSourceAlias, pair($updatedJoinTreeNodes->simplyMergeJoinTreeNodeUsingOrOperation($state, $mapping, $extensions)->toOne(), $reprocessedTargetAlias.relationalElement->cast(@Relation)));
 }
 
-function <<access.private>> meta::relational::functions::pureToSqlQuery::union::simplyMergeJoinTreeNodeUsingOrOperation(j:JoinTreeNode[*], extensions:Extension[*]):JoinTreeNode[0..1]
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::simplyMergeJoinTreeNodeUsingOrOperation(j: Pair<RelationalPropertyMapping, JoinTreeNode>[*], state: State[0..1], mapping: Mapping[1], extensions:Extension[*]):JoinTreeNode[0..1]
 {
     if($j->isEmpty(),
        |[],
-       |let plists = $j->map(o|^List<JoinTreeNode>(values = $o->extractLine()))->sort({a,b|$b.values->size() - $a.values->size()});
-        let lists = $plists->removeDuplicates({a,b|$a.values->size() == $b.values->size() && $a.values->buildUniqueName(true, $extensions) == $b.values->buildUniqueName(true, $extensions)});
-        let r = $lists->tail()->fold({i,a|let values = $a.values->map(v|let t = $i.values->filter(e|$e.alias == $v.alias);
-                                                   if ($t->isEmpty(),
-                                                      |$v,
-                                                      |let join = $v.join;
-                                                       let nodes = $t->concatenate($v);
-                                                       let operation = if($nodes.join.name->removeDuplicates()->size() == 1,
-                                                                          |$nodes.join.operation->at(0),
-                                                                          |$nodes.join.operation->orFilters($extensions)->cast(@Operation)->toOne()
-                                                                       );
-                                                       ^$v(
-                                                          join = ^$join
-                                                                 (
-                                                                    name = $operation->buildUnionJoinName(),
-                                                                    operation = $operation
-                                                                 )
-                                                       );
-                                                   );
-                                             );
-                                             ^List<JoinTreeNode>(values=$values);
-                                      }
-                                      , $lists->head()
-                                 );
-         $r.values->buildTree();
+       |let plists = $j->map(o|pair($o.first, $o.second->extractLine()->list()))->sort({a,b|$b.second.values->size() - $a.second.values->size()});
+        let lists = $plists->removeDuplicates({a,b|$a.second.values->size() == $b.second.values->size() && $a.second.values->buildUniqueName(true, $extensions) == $b.second.values->buildUniqueName(true, $extensions) && ($a.first.sourceSetImplementationId == $b.first.sourceSetImplementationId) && ($a.first.targetSetImplementationId == $b.first.targetSetImplementationId)});
+        let orderedJoinLine = $lists->head().second.values;
+        let joinsAcrossListsPerJoinInJoinLine = $orderedJoinLine->map({j |
+          $lists->map({l |
+            let joinsForAlias = $l.second.values->filter(e | $e.alias == $j.alias).join;
+            if ($joinsForAlias->isEmpty(),
+                | [],
+                | pair($l.first, $joinsForAlias->toOne())
+            );
+          })->list()
+        });
+        let updatedJoinLineWithOperationsMerged = $orderedJoinLine->size()->range()->map({idx |
+          let joinTreeNode = $orderedJoinLine->at($idx);
+          let joinsWithPropertyMappingAcrossLists = $joinsAcrossListsPerJoinInJoinLine->at($idx).values;
+          let withDupsRemoved = $joinsWithPropertyMappingAcrossLists.second->removeDuplicatesBy(x | $x.name);
+          if ($withDupsRemoved->size() == 1,
+              | $joinTreeNode,
+              | let join = $joinTreeNode.join;
+                let mergedOp = newAndOrDynaFunctionRelaxedBrackets('or', $joinsWithPropertyMappingAcrossLists.second.operation);
+                let unionOrJoinOp = ^UnionJoinOrOperation(
+                  name = $mergedOp.name,
+                  parameters = $mergedOp.parameters,
+                  firstJoinInChain = $idx == 0,
+                  lastJoinInChain = $idx == ($orderedJoinLine->size() - 1),
+                  elements = $joinsWithPropertyMappingAcrossLists->map({j |
+                    ^UnionJoinOrOperationElement(
+                      sourceSet = getClassMapping($j.first.sourceSetImplementationId, $mapping, $state)->cast(@RelationalInstanceSetImplementation)->toOne(),
+                      targetSet = getClassMapping($j.first.targetSetImplementationId, $mapping, $state)->cast(@RelationalInstanceSetImplementation)->toOne()
+                    )
+                  })
+                );
+
+                ^$joinTreeNode(
+                  join = ^$join(
+                    name = $unionOrJoinOp->buildUnionJoinName(),
+                    operation = $unionOrJoinOp
+                  )
+                );
+          );
+        });
+        $updatedJoinLineWithOperationsMerged->buildTree();
     );
 }
 
@@ -562,7 +579,7 @@ function meta::relational::functions::pureToSqlQuery::union::addPkForAggregation
                                                                            let valid = if ($currentSetImplPk->isEmpty(), |  fail('There is no primary key defined on the table ' + $currentSetImpl->mainTable()->toOne().name + '. A primary key must be defined in the table definition in PURE to use this feature'); false; ,| true);
                                                                            let queryColumns = $query.columns;
                                                                            let newColumns = $currentSetImplPk->size()->range()->map(pkIndex | let pkCol = $currentSetImplPk->at($pkIndex);
-                                                                                                                                              let propName = if($state.importDataFlow == true, | '"'+$pkCol.column.name+'_'+$setIndex->toString()+'"', | '"pk_'+$pkIndex->toString()+'_'+$setIndex->toString()+'"');
+                                                                                                                                              let propName = if($state.importDataFlow == true, | '"'+$pkCol.column.name+'_'+$setIndex->toString()+'"', | unionPkColumnAlias($pkIndex, $setIndex));
                                                                                                                                               ^Alias(name=$propName, relationalElement= ^$pkCol(alias = $query.data.alias->toOne())); );
                                                                            let newColumnNames = $newColumns.name;
                                                                            ^$query(columns=$newColumns->concatenate($queryColumns->filter(col | !$newColumnNames->contains($col->cast(@Alias).name))));
@@ -781,4 +798,217 @@ Class meta::relational::metamodel::relation::Union extends Relation
 
 Class meta::relational::metamodel::relation::UnionAll extends Union
 {
+}
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::unionPkColumnAlias(pkIndex: Integer[1], setIndex: Integer[1]): String[1]
+{
+  '"pk_'+$pkIndex->toString()+'_'+$setIndex->toString()+'"'
+}
+
+Class meta::relational::metamodel::operation::UnionJoinOrOperation extends DynaFunction
+[
+  $this.name == 'or'
+]
+{
+  firstJoinInChain: Boolean[1];
+  lastJoinInChain: Boolean[1];
+  elements: UnionJoinOrOperationElement[*];
+}
+
+Class meta::relational::metamodel::operation::UnionJoinOrOperationElement
+{
+  sourceSet: RelationalInstanceSetImplementation[1];
+  targetSet: RelationalInstanceSetImplementation[1];
+}
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::resolvePK(table: Table[1], set: RelationalInstanceSetImplementation[0..1]): RelationalOperationElement[*]
+{
+  if ($set->isNotEmpty(),
+      | $set->toOne()->resolvePrimaryKey(),
+      | $table.primaryKey
+  )
+}
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::tryRemovingUnionJoinOrOperation(source: RelationalTreeNode[1], target: JoinTreeNode[1], orJoin: UnionJoinOrOperation[1], extraAndFilters: RelationalOperationElement[*], extensions: Extension[*]): JoinTreeNode[1]
+{
+  let sourceAlias = $source.alias;
+  let targetAlias = $target.alias;
+
+  if ($sourceAlias.relationalElement->instanceOf(UnionAll) && $targetAlias.relationalElement->instanceOf(Table) && $target.joinType->in([JoinType.LEFT_OUTER, JoinType.INNER]),
+      {|
+        
+        // Case 1  (UnionAll -----(LeftJoin/InnerJoin)-----> Table)
+        let sourceUnion = $sourceAlias.relationalElement->cast(@UnionAll);
+        let targetTable = $targetAlias.relationalElement->cast(@Table);
+
+        // Optimize only if union sets are relational and OR elements are from these sets
+        if ($sourceUnion.setImplementations->forAll(x | $x->instanceOf(RootRelationalInstanceSetImplementation)) && $orJoin.elements.sourceSet.id->forAll(s | $s->in($sourceUnion.setImplementations.id)),
+            | let sourceSetImpls = $sourceUnion.setImplementations->cast(@RootRelationalInstanceSetImplementation);
+              let sourceSetImplIds = $sourceSetImpls.id;
+              let sourcePKColumnNames = $sourceSetImpls->size()->range()->map(s | $sourceSetImpls->at($s)->resolvePrimaryKey()->size()->range()->map(p | unionPkColumnAlias($p, $s)));
+              let sourcePKColumnsAvailable = $sourceUnion.queries->forAll(q | $sourcePKColumnNames->forAll(pkCol | $q.columns->exists(c | $c->instanceOf(Alias) && $c->cast(@Alias).name == $pkCol)));
+
+              let targetPKs = if ($orJoin.lastJoinInChain,
+                | // Last join in chain, suggesting it has to be target table with a setImpl
+                  // Check that there is only one target set (as target is a table) and extract PK from there
+                  let uniqueTargetSetIds = $orJoin.elements.targetSet.id->removeDuplicates();
+                  if ($uniqueTargetSetIds->size() == 1, | $targetTable->resolvePK($orJoin.elements->at(0).targetSet), | []);,
+                | // Intermediate join. So, no setImpl will be available. Extract PK defn from the table
+                  $targetTable->resolvePK([])
+              );
+              let targetPKsAvailable = $targetPKs->isNotEmpty();
+
+              // Optimize if PKs are available on both sides by generating a bridge union
+              if ($sourcePKColumnsAvailable && $targetPKsAvailable,
+                  |
+                    let bridgeUnionAllRelationalElement = ^UnionAll(
+                      queries = $orJoin.elements->size()->range()->map({idx |
+                        let orElement = $orJoin.elements->at($idx);
+                        let sourceUnionQueryForSet = $sourceUnion.queries->at($sourceSetImplIds->indexOf($orElement.sourceSet.id));
+                        buildBridgeUnionAllLeg(
+                          $sourceUnionQueryForSet, $sourcePKColumnNames, $targetTable, $targetPKs->cast(@TableAliasColumn).column.name,
+                          $orJoin.parameters->at($idx), $sourceAlias.name, $targetAlias.name, $target.joinType->toOne(), $extraAndFilters, $extensions
+                        );
+                      })
+                    );
+                    let bridgeAlias = ^TableAlias(name = $targetAlias.name + '_union_or_bridge', relationalElement = $bridgeUnionAllRelationalElement);
+
+                    let sourceToBridgeJoinOp = $sourcePKColumnNames->size()->range()->map({i |
+                      ^DynaFunction(
+                        name = 'equal',
+                        parameters = [
+                          ^TableAliasColumn(alias = $sourceAlias, column = ^Column(name = $sourcePKColumnNames->at($i), type = ^meta::relational::metamodel::datatype::Integer())),
+                          ^TableAliasColumn(alias = $bridgeAlias, column = ^Column(name = bridgeUnionAllPKName(true, $i), type = ^meta::relational::metamodel::datatype::Integer()))
+                        ]
+                      )
+                    })->reverse()->andFilters($extensions)->toOne()->cast(@Operation);
+                    let sourceToBridgeJoinName = $sourceToBridgeJoinOp->buildUniqueName(false, $extensions);
+
+                    let bridgeToTargetJoinOp = $targetPKs->size()->range()->map({i |
+                      ^DynaFunction(
+                        name = 'equal',
+                        parameters = [
+                          ^TableAliasColumn(alias = $bridgeAlias, column = ^Column(name = bridgeUnionAllPKName(false, $i), type = ^meta::relational::metamodel::datatype::Integer())),
+                          ^TableAliasColumn(alias = $targetAlias, column = $targetPKs->at($i)->cast(@TableAliasColumn).column)
+                        ]
+                      )
+                    })->reverse()->andFilters($extensions)->toOne()->cast(@Operation);
+                    let bridgeToTargetJoinName = $bridgeToTargetJoinOp->buildUniqueName(false, $extensions);
+                    
+                    ^JoinTreeNode(
+                      alias = $bridgeAlias,
+                      joinName = $sourceToBridgeJoinName,
+                      joinType = $target.joinType,
+                      database = ^Database(name='Gen_Join_DB'),
+                      join = ^Join(
+                        name = $sourceToBridgeJoinName,
+                        operation = $sourceToBridgeJoinOp,
+                        target = $bridgeAlias,
+                        aliases = [pair($sourceAlias, $bridgeAlias), pair($bridgeAlias, $sourceAlias)]
+                      ),
+                      childrenData = [
+                        ^$target(
+                          joinName = $bridgeToTargetJoinName,
+                          database = ^Database(name='Gen_Join_DB'),
+                          join = ^Join(
+                            name = $bridgeToTargetJoinName,
+                            operation = $bridgeToTargetJoinOp,
+                            target = $targetAlias,
+                            aliases = [pair($bridgeAlias, $targetAlias), pair($targetAlias, $bridgeAlias)]
+                          )
+                        )
+                      ]
+                    );,
+                  | $target
+              );,
+            | $target
+        );
+      },
+      {|
+        $target
+      }
+  );
+}
+
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::bridgeUnionAllPKName(isSource: Boolean[1], pkIndex: Integer[1]): String[1]
+{
+   '"union_gen_' + if ($isSource, | 'source', | 'target') + '_pk_' + $pkIndex->toString() + '"'
+}
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::buildBridgeUnionAllLeg(rootRelation: Relation[1], rootPKColumns: String[*], childRelation: Relation[1], childPKColumns: String[*], unionJoinOpElement: RelationalOperationElement[1], sourceAliasNameInJoin: String[1], targetAliasNameInJoin: String[1], joinType: JoinType[1], extraAndFilters: RelationalOperationElement[*], extensions: Extension[*]): SelectSQLQuery[1]
+{
+  let rootAlias = ^TableAlias(relationalElement = $rootRelation, name = 'root');
+  let childAlias = ^TableAlias(relationalElement = $childRelation, name = 'child');
+
+  let joinOp = $unionJoinOpElement->concatenate($extraAndFilters)->reverse()->andFilters($extensions)->reprocessAliases([^OldAliasToNewAlias(first = $sourceAliasNameInJoin, second = $rootAlias), ^OldAliasToNewAlias(first = $targetAliasNameInJoin, second = $childAlias)])->toOne()->cast(@Operation);
+  let joinName = $joinOp->buildUniqueName(false, $extensions);
+
+  let buildColumn = {isSource: Boolean[1], pkColumnName: String[1], pkIndex: Integer[1], tableAlias: TableAlias[1] |
+    ^Alias(
+      name = bridgeUnionAllPKName($isSource, $pkIndex),
+      relationalElement = ^TableAliasColumn(alias = $tableAlias, column = ^Column(name = $pkColumnName, type = ^meta::relational::metamodel::datatype::Integer()))
+    )
+  };
+
+  ^SelectSQLQuery(
+    columns = concatenate(
+      $rootPKColumns->size()->range()->map(i | $buildColumn->eval(true, $rootPKColumns->at($i), $i, $rootAlias)),
+      $childPKColumns->size()->range()->map(i | $buildColumn->eval(false, $childPKColumns->at($i), $i, $childAlias))
+    ),
+    data = ^RootJoinTreeNode(
+      alias = $rootAlias,
+      childrenData = [
+        ^JoinTreeNode(
+          alias = $childAlias,
+          joinType = $joinType,
+          database = ^Database(name='Gen_Join_DB'),
+          joinName = $joinName,
+          join = ^Join(
+            name = $joinName,
+            operation = $joinOp,
+            target = $childAlias,
+            aliases = [pair($rootAlias, $childAlias), pair($childAlias, $rootAlias)]
+          )
+        )
+      ]
+    )
+  );
+}
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::tryRemovingUnionJoinOrOperation(source: RelationalTreeNode[1], target: JoinTreeNode[1], extensions: Extension[*]): JoinTreeNode[1]
+{
+  // TODO: Improvise to handle extra join clauses (like milestoning)
+  $target.join.operation->match([
+    u: UnionJoinOrOperation[1] | $source->tryRemovingUnionJoinOrOperation($target, $u, [], $extensions),
+    a: Any[*] | $target
+  ])
+}
+
+function <<access.private>> meta::relational::functions::pureToSqlQuery::union::tryRemovingUnionJoinOrOperation(rn: RelationalTreeNode[1], extensions: Extension[*]): RelationalTreeNode[1]
+{
+  ^$rn
+  (
+    childrenData = $rn.childrenData->cast(@JoinTreeNode)
+      ->map(child | $rn->tryRemovingUnionJoinOrOperation($child, $extensions))
+      ->map(child | $child->tryRemovingUnionJoinOrOperation($extensions))
+  )
+}
+
+function meta::relational::functions::pureToSqlQuery::union::tryRemovingUnionJoinOrOperation(s: SelectSQLQuery[1], extensions: Extension[*]): SelectSQLQuery[1]
+{
+  let transformFunction = {rel: RelationalOperationElement[1] |
+    $rel->match([
+      select: SelectSQLQuery[1] | if($select.data->isNotEmpty(),
+        | let newData = $select.data->toOne()->tryRemovingUnionJoinOrOperation($extensions)->cast(@RootJoinTreeNode);
+          ^$select(
+            data = $newData,
+            leftSideOfFilter = $select.leftSideOfFilter->map(l | $l->findOneNode($s.data->toOne(), $newData))
+          );,
+        | $select
+      ),
+      a: Any[*] | $rel
+    ])
+  };
+  meta::relational::postProcessor::transformNonCached($s, $transformFunction)->cast(@SelectSQLQuery);
 }
