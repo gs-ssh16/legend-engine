@@ -53,7 +53,7 @@ function meta::relational::postProcessor::removeUnionOrJoins::removeUnionOrJoins
     )
   );
 
-  let transformedSelect = if ($shouldAttemptRemovingUnionOrJoins, | $selectSQLQuery->meta::relational::functions::pureToSqlQuery::union::removeUnionOrJoins($extensions), | $selectSQLQuery);
+  let transformedSelect = if (true, | $selectSQLQuery->meta::relational::functions::pureToSqlQuery::union::removeUnionOrJoins($extensions), | $selectSQLQuery);
   ^Result<SelectSQLQuery|1>(values = $transformedSelect);
 }
 

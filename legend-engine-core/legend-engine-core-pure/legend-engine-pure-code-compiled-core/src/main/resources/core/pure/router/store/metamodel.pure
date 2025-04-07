@@ -36,6 +36,11 @@ Class meta::pure::router::store::metamodel::StoreMappingRoutedValueSpecification
    propertyMapping    : PropertyMapping[*];
 }
 
+Class meta::pure::router::store::metamodel::UnionProjectFuncExpr extends SimpleFunctionExpression
+{
+  singleSetRoutedFes: Pair<Mapping, ValueSpecification>[*];
+}
+
 Class meta::pure::router::store::metamodel::PermutationSet
 {
    id : Integer[1];

@@ -668,7 +668,9 @@ function meta::relational::functions::pureToSqlQuery::processPropertyFunctionExp
                                                       ]);
                               processProperty(
                                            $property,
-                                           $propertyOwnerClass,
+                                           
+                                           if ($fe.parametersValues->at(0)->byPassRouterInfo()->instanceOf(VariableExpression) && $fe.parametersValues->at(0)->byPassRouterInfo()->cast(@VariableExpression).name == 'this', | $state.leftSideOfQualifier->evaluateAndDeactivate()->toOne().genericType->genericTypeClass();, | $propertyOwnerClass)
+                                        ,
                                            $baseOperation.currentPropertyMapping,
                                            $state.propertyMappingFromRouter,
                                            $baseOperation.element->cast(@SelectWithCursor),
@@ -6249,8 +6251,21 @@ function meta::relational::functions::pureToSqlQuery::isSupported(f:FunctionDefi
    olapFuncs()->contains($f.expressionSequence->cast(@FunctionExpression).functionName->toOne());
 }
 
+function meta::relational::functions::pureToSqlQuery::updateExpression(expression:ValueSpecification[1], state:State[1], set: SetImplementation[1], extensions:Extension[*]):ValueSpecification[1]
+{
+  if ($expression->instanceOf(FunctionExpression),
+      | 
+        let fe = $expression->cast(@FunctionExpression);
+        
+        ^$fe(
+          parametersValues = $fe.parametersValues->at(0)->cast(@StoreMappingRoutedValueSpecification)->map(sv | ^$sv(sets = $set, value = $sv.value->updateExpression($state, $set, $extensions)))->concatenate($fe.parametersValues->tail()) 
+        )->evaluateAndDeactivate();,
+      | $expression
+  )
+  
+}
 
-function meta::relational::functions::pureToSqlQuery::processProject(ids:String[*], functions:meta::pure::metamodel::function::Function<Any>[*], docs:String[*], expression:FunctionExpression[1], operation:SelectWithCursor[1], vars:Map<VariableExpression, ValueSpecification>[1], state:State[1], nodeId:String[1], aggFromMap:List<ColumnGroup>[1], context:DebugContext[1],wc:WindowColumnSpecification<Any>[*], extensions:Extension[*]):RelationalOperationElement[1]
+function meta::relational::functions::pureToSqlQuery::processProject(ids:String[*], functions:meta::pure::metamodel::function::Function<Any>[*], docs:String[*], oldE:FunctionExpression[1], operation:SelectWithCursor[1], vars:Map<VariableExpression, ValueSpecification>[1], state:State[1], nodeId:String[1], aggFromMap:List<ColumnGroup>[1], context:DebugContext[1],wc:WindowColumnSpecification<Any>[*], extensions:Extension[*]):RelationalOperationElement[1]
 {
    assertEquals($ids->size(), $functions->size(), | 'The number of column names must match the number of functions. Please provide a column name for each projection function ('+$ids->size()->toString()+' != '+$functions->size()->toString()+')');
    assertEquals($ids->size(), $ids->removeDuplicates()->size(), 'The list of Paths provided to project can\'t contain duplicate names. Please use ! to provide an alias. Example:#/Person/lastName!newAlias#');
@@ -6263,9 +6278,64 @@ function meta::relational::functions::pureToSqlQuery::processProject(ids:String[
                                                       + $functionsAndIdsNotEndingInDatatype->map( f| $f.second->toString() + ' (' + $f.first->functionReturnType().rawType->toOne()->toString()+')'  )->makeString( ', '));
                                               ,| []);
 
-   print(if(!$context.debug, |'',
+   print(if(false, |'',
             | $context.space+'*>Process Project: '+$functions->map(f|$f->match([p:Path<Nil,Any|1>[1]|$p->printPath('/'), f:FunctionDefinition<Any>[1]|'\'Function\'']))->makeString(', ')+'\n'+
               $context.space+'   (P)Source Operation>  '+$operation->cast(@SelectWithCursor).select->meta::relational::functions::sqlQueryToString::processOperation(meta::relational::runtime::DatabaseType.DebugPrint, $extensions)+'\n'));
+   
+   if($oldE->instanceOf(UnionProjectFuncExpr),
+  //  if (false, //$oldE.parametersValues->at(0)->cast(@StoreMappingRoutedValueSpecification).sets->toOne()->instanceOf(OperationSetImplementation), 
+   | 
+   
+  //  let unionExp = meta::pure::router::store::routing::doUnion($oldE->cast(@UnionProjectFuncExpr).singleSetRoutedFes->map(x | $x.second->cast(@StoreMappingClusteredValueSpecification).val), true, $oldE.genericType);
+  //    processValueSpecification($unionExp, [], $operation, $vars, $state, JoinType.LEFT_OUTER, $nodeId, $aggFromMap, $context->shift(), $extensions)->toOne()->cast(@SelectWithCursor);
+    // println($oldE->cast(@UnionProjectFuncExpr).singleSetRoutedFes.second->cast(@StoreMappingClusteredValueSpecification).val);
+
+     let unionQueries = $oldE->cast(@UnionProjectFuncExpr).singleSetRoutedFes->map(x | 
+     
+         let newState = ^$state(mapping = $x.first->toOne(), idToClassMapping=buildClassMappingsById($x.first));
+     let res = processValueSpecification($x.second->cast(@StoreMappingClusteredValueSpecification).val, [], $operation, $vars, $newState, JoinType.LEFT_OUTER, $nodeId, $aggFromMap, $context->shift(), $extensions)->toOne()->cast(@SelectWithCursor);
+                //  []->toOne();
+                 $res;
+     
+     );
+
+
+     let firstSel = $unionQueries->at(0).select;
+
+    let selects = $unionQueries->cast(@SelectWithCursor).select->map(s | $s->pushSavedFilteringOperation($extensions)->pushExtraFilteringOperation($extensions));
+
+    let rootTable = ^TableAlias(
+                                  name = 'union',
+                                  relationalElement = ^UnionAll(
+                                                                queries = $selects
+                                                          )
+                    );
+
+    let newRoot = ^RootJoinTreeNode(alias = $rootTable);
+    ^SelectWithCursor(
+      select = ^$firstSel(
+                      columns = $firstSel.columns
+                                  ->map(c|$c->match([a:Alias[1]|^$a(relationalElement=^TableAliasColumn(column=^Column(name=$a.name, type=^meta::relational::metamodel::datatype::Integer()), alias=$rootTable)),
+                                                      t:TableAliasColumn[1]|^$t(alias=$rootTable)
+                                                    ])),
+                      data = $newRoot,
+                      savedFilteringOperation = [],
+                      leftSideOfFilter = if($firstSel.leftSideOfFilter->isEmpty(),|[],|$newRoot),
+                      filteringOperation = [],
+                      havingOperation = [],
+                      groupBy = [],
+                      extraFilteringOperation = []
+                ),
+      currentTreeNode = $newRoot
+      );
+     
+     
+     ,
+   | 
+   
+   
+
+   let expression = $oldE;
    let sourceQuery = processValueSpecification($expression.parametersValues->at(0), [], $operation, $vars, ^$state(inProject=true), JoinType.LEFT_OUTER, $nodeId, $aggFromMap, $context->shift(), $extensions)->toOne()->cast(@SelectWithCursor);
 
    let sourceSelect = $sourceQuery.select;
@@ -6381,6 +6451,7 @@ function meta::relational::functions::pureToSqlQuery::processProject(ids:String[
                      )
                  );
    );
+  );
 }
 function<<access.private>> meta::relational::functions::pureToSqlQuery::updateEnumerationType(inputType:Type[1], state:State[1]):Type[1]
 {

@@ -370,6 +370,55 @@ function <<access.private>> meta::pure::router::store::routing::wrapValueSpecifi
    );
 }
 
+
+function <<access.private>> meta::pure::router::store::routing::updatedOpInMappingRecursively(map: Mapping[1], opSet: OperationSetImplementation[1], set: SetImplementation[1]):Mapping[1]
+{
+
+  // ^$map
+  // (
+  //   includes = $map.includes->map(i | ^$i(included = $i.included->updatedOpInMappingRecursively($opSet, $set))),
+  //   classMappings = $map.classMappings->map(x | 
+  //     if($x.id == $opSet.id,
+  //       | 
+  //         //   let op = $x->cast(@OperationSetImplementation);
+  //         //  ^OperationSetImplementation(id = 'gen_' + $op.id, operation = $op.operation, class = $op.class, root = $op.root, parent = $newMap, parameters = ^SetImplementationContainer(id = $set.id, setImplementation = ^$set(parent = $newMap)));,
+  //         [],
+  //       | if($x.id == $set.id,
+  //             | ^$x(root = true),
+  //             | $x
+  //           )
+  //     )
+  //   )
+  // )
+//   let newMap = ^Mapping(includes = $map.includes->map(i | ^$i(included = $i.included->updatedOpInMappingRecursively($opSetId, $set))));
+  
+  // let newClassMappings = $map.classMappings->map(x | 
+  //   if($x.id == $opSetId,
+  //      | 
+  //       //   let op = $x->cast(@OperationSetImplementation);
+  //       //  ^OperationSetImplementation(id = 'gen_' + $op.id, operation = $op.operation, class = $op.class, root = $op.root, parent = $newMap, parameters = ^SetImplementationContainer(id = $set.id, setImplementation = ^$set(parent = $newMap)));,
+  //       [],
+  //      | if($x.id == $set.id,
+  //           | ^$x(root = true, parent = $newMap),
+  //           |^$x(parent = $newMap)
+  //         )
+  //   )
+  // );
+  // $newMap->mutateAdd('classMappings', $newClassMappings);
+
+
+  let newMap = ^Mapping(name = 'gen_mapping');
+  let includes = ^MappingInclude(owner = $newMap , included = $map);
+  // let cm = ^$opSet(parent = $newMap, id = 'gen_root_' + $set.id, parameters = ^SetImplementationContainer(id = $set.id, setImplementation = $set));
+  $newMap->mutateAdd('includes', $includes);
+  // println($map->classMappings()->size());
+  // println($map->classMappings()->filter(s | $s.id != $opSetId)->size());
+  // []->toOne();
+
+  $newMap->mutateAdd('classMappings', ^OperationSetImplementation(id = 'gen_' + $opSet.id, operation = $opSet.operation, class = $opSet.class, root = $opSet.root, parent = $newMap, parameters = ^SetImplementationContainer(id = $set.id, setImplementation = $set)));
+
+}
+
 // ===================================================================================
 // Special Functions
 // ===================================================================================
@@ -509,6 +558,40 @@ function  meta::pure::router::store::routing::specializedFunctionExpressionRoute
             | $processedFunction);
       }
     ),
+    pair(fe:FunctionExpression[1] | $fe.func.name == 'project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_',
+      {f:Function<Any>[1], fe:FunctionExpression[1], state:RoutingState[1], executionContext:meta::pure::runtime::ExecutionContext[1], vars:Map<VariableExpression, ValueSpecification>[1], inScopeVars:Map<String, List<Any>>[1], extensions:meta::pure::extension::Extension[*], debug:DebugContext[1] |
+
+            let processedFunction  = routeFunctionExpressionFunctionDefinition($f, $fe, $state, $executionContext, $vars, $inScopeVars, $extensions, $debug);
+            let valueSpec = $processedFunction.value->toOne()->cast(@FunctionExpression)->evaluateAndDeactivate();
+            
+            if ($valueSpec.parametersValues->at(0)->cast(@StoreMappingRoutedValueSpecification).sets->toOne()->instanceOf(OperationSetImplementation) && ($valueSpec.parametersValues->at(0)->cast(@StoreMappingRoutedValueSpecification).sets->toOne()->cast(@OperationSetImplementation)->resolveOperation($valueSpec.parametersValues->at(0)->cast(@StoreMappingRoutedValueSpecification).mapping)->size() > 1),
+                | 
+                  let routed = $valueSpec.parametersValues->at(0)->cast(@StoreMappingRoutedValueSpecification);
+                  let op = $routed.sets->toOne()->cast(@OperationSetImplementation);
+                  let allSets = $op->resolveOperation($routed.mapping);
+                  let subRouted = $allSets->map(s |
+                    let map = $routed.mapping;
+                    let updatedMap = $map->updatedOpInMappingRecursively($op, $s);//^$map(classMappings = $map.classMappings->filter(x | $x.id != $op.id)->concatenate(^$op(id = 'gen_root_' + $op.id, parameters = ^SetImplementationContainer(id = $s.id, setImplementation = $s))));
+                    let dummy = {|'ok'};
+                    let upFe = routeFunction(^$dummy(expressionSequence = $fe), getRoutingStrategyFromMappingAndRuntime($updatedMap, $routed.runtime), $executionContext, $inScopeVars, false, $extensions, $debug).expressionSequence->evaluateAndDeactivate()->at(0);
+                  //  enrichFunctionExpressions($nfe, getRoutingStrategyFromMappingAndRuntime($routed.mapping, $routed.runtime), $executionContext, $inScopeVars, false, $extensions, $debug).value->cast(@FunctionExpression););
+
+                    pair($updatedMap, $upFe);
+                  );
+                  // $subRouted->map(x | $x->meta::pure::router::printer::asString())->println();
+                  let u = ^UnionProjectFuncExpr(
+                    func = $fe.func, parametersValues = $valueSpec.parametersValues, importGroup = $fe.importGroup, genericType = $fe.genericType, multiplicity = $fe.multiplicity,
+                    singleSetRoutedFes = $subRouted
+                  )->evaluateAndDeactivate();
+                  
+                  
+                  ^$processedFunction(value = $u);
+                  
+                  ,
+                | $processedFunction
+            );
+      }
+    ),
     pair(fe:FunctionExpression[1] | $fe.func->in(meta::pure::mutation::mutationFunctions()),
         {f:Function<Any>[1], fe:FunctionExpression[1], state:RoutingState[1], executionContext:meta::pure::runtime::ExecutionContext[1], vars:Map<VariableExpression, ValueSpecification>[1], inScopeVars:Map<String, List<Any>>[1], extensions:meta::pure::extension::Extension[*], debug:DebugContext[1] |
                 let prevalFunc = $fe->preval($inScopeVars, $extensions, $debug)->cast(@SimpleFunctionExpression);
@@ -538,6 +621,22 @@ function  meta::pure::router::store::routing::specializedFunctionExpressionRoute
         }
     )
   ];
+}
+
+
+
+function meta::pure::router::store::routing::customRewrite(vs: ValueSpecification[1], set: SetImplementation[1]): ValueSpecification[1]
+{
+   $vs->match([
+      fe: FunctionExpression[1] | 
+        let params = $fe.parametersValues->evaluateAndDeactivate();
+        if($fe.func->in([getAll_Class_1__T_MANY_, getAll_Class_1__Date_1__T_MANY_, getAll_Class_1__Date_1__Date_1__T_MANY_]),
+            | let mainClass = $fe.parametersValues->evaluateAndDeactivate()->at(0)->cast(@InstanceValue).values->at(0)->cast(@Class<Any>);
+              ^$fe(parametersValues=^ClassSetImplementationHolder(genericType=^GenericType(rawType=$mainClass), multiplicity=PureOne, set = $set, value = $params->at(0))->concatenate($params->tail()));,
+            | ^$fe(parametersValues=$params->at(0)->customRewrite($set)->concatenate($params->tail()))
+        );,
+      vs: ValueSpecification[1] | $vs
+   ]);
 }
 
 // ===================================================================================
