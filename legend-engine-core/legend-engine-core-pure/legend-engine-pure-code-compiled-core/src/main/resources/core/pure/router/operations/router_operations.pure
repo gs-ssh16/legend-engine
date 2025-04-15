@@ -54,13 +54,20 @@ function <<access.private>> meta::pure::router::operations::getMappedLeafTypes_r
 }
 
 // TODO: Fix packages for below functions
+function <<access.private>> meta::pure::router::routing::isSingleSetUnionOperationMapping(o: OperationSetImplementation[1]): Boolean[1]
+{
+  ($o.operation == meta::pure::router::operations::union_OperationSetImplementation_1__SetImplementation_MANY_) &&
+  ($o.operation->eval($o)->size() == 1) && 
+  ($o.operation->eval($o)->toOne()->instanceOf(InstanceSetImplementation))
+}
+
 function meta::pure::router::routing::potentiallyResolveOperation(s:SetImplementation[*], mapping:Mapping[1]):SetImplementation[*]
 {
    if($s->isEmpty(),
       |[],
       |$s->map(e|$e->match([
                             o:OperationSetImplementation[1]| // Temporary
-                                                             if ($o.operation.name == 'special_union_OperationSetImplementation_1__SetImplementation_MANY_',
+                                                             if (($o.operation.name == 'special_union_OperationSetImplementation_1__SetImplementation_MANY_') || ($o->isSingleSetUnionOperationMapping()),
                                                                    |$o.operation->eval($o->reprocessOperationForAssociationMapping($mapping)->toOne())->potentiallyResolveOperation($mapping),
                                                                    |$o->reprocessOperationForAssociationMapping($mapping)
                                                                 );,
@@ -75,7 +82,7 @@ function meta::pure::router::routing::potentiallyResolveOperation(s:SetImplement
       |[],
       |$s->map(e|$e->match([
                             o:OperationSetImplementation[1]| // Temporary
-                                                             if ($o.operation.name == 'special_union_OperationSetImplementation_1__SetImplementation_MANY_',
+                                                             if (($o.operation.name == 'special_union_OperationSetImplementation_1__SetImplementation_MANY_') || ($o->isSingleSetUnionOperationMapping()),
                                                                    |$o.operation->eval($o->reprocessOperationForAssociationMapping($mapping, $allClassMappings)->toOne())->potentiallyResolveOperation($mapping, $allClassMappings),
                                                                    |$o->reprocessOperationForAssociationMapping($mapping, $allClassMappings)
                                                                 );,

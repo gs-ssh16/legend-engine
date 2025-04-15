@@ -415,7 +415,7 @@ function <<access.private>> meta::pure::lineage::scanRelations::generatRelationa
    $allClusters->fold({ v, a|    $v.cluster->cast(@StoreMappingClusteredValueSpecification).store->match([
                                                                            d:Database[1] |  let fn = $v.cluster->toOne().val->byPassValueSpecificationWrapper()->cast(@FunctionExpression);
                                                                                             let context = ^RelationalExecutionContext();
-                                                                                            let SQL =   $v.cluster->toOne().val->byPassValueSpecificationWrapper()->cast(@FunctionExpression)->toSQLQuery($m, $a.vars, $context, $debug, $extensions)  ;    
+                                                                                            let SQL =   $v.cluster->toOne().val->byPassValueSpecificationWrapper()->cast(@FunctionExpression)->toSQLQuery($m, [], $a.vars, $context, $debug, $extensions)  ;    
                                                                                             if($debug.debug, | print('Generated SQL Query - ' + sqlQueryToStringPretty($SQL, DatabaseType.H2, 'GMT', [], $extensions) + '\n\n'), |[]);
                                             
                                                                                             let possibleClass = $fn.genericType.rawType->toOne();

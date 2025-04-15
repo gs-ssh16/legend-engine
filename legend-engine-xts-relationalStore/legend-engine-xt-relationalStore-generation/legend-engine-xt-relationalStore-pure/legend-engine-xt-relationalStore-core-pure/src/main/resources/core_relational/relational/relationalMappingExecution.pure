@@ -319,7 +319,8 @@ function meta::relational::mapping::execution(store: Database[1], f:ValueSpecifi
 
    let relationalExecutionContext = $exeCtx->match([r:RelationalExecutionContext[1]|$r, a:Any[0..1]|[]]);
 
-   let originalQuery = $f->toSQLQuery($m, $inScopeVars, $relationalExecutionContext, $debug, $extensions);
+   let connection = $runtime->connectionByElement($store)->cast(@DatabaseConnection);
+   let originalQuery = $f->toSQLQuery($m, $connection, $inScopeVars, $relationalExecutionContext, $debug, $extensions);
    let toSqlQueryDurationMilliseconds = ($toSqlQueryStart->dateDiff(now(),DurationUnit.MILLISECONDS));
 
    let connections = $runtime.connectionStores->filter(c | $c.connection->instanceOf(DatabaseConnection));
@@ -332,8 +333,6 @@ function meta::relational::mapping::execution(store: Database[1], f:ValueSpecifi
                       );
 
    let postProcessorResult = postProcessQuery($exeCtx, $originalQuery, $storeRuntime, $store, $extensions);
-
-   let connection = $runtime->connectionByElement($store)->cast(@DatabaseConnection);
 
    let sqlQueryToStringStart = now();
    let sql = if($relationalExecutionContext.insertDriverTablePkInTempTable->isEmpty(),

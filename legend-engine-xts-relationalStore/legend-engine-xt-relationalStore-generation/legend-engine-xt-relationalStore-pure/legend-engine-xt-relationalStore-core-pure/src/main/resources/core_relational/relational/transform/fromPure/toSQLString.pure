@@ -122,7 +122,7 @@ function <<access.private>> meta::relational::functions::sqlstring::toSQL(cluste
 
               toSQL($clusters->tail(), $vars->put($paramName, ^List<Any>(values=$res.values)), $mapping, $databaseType, $dbTimeZone, $sqlQueryPostProcessors, $extensions, $debug, $sqlResult); ,
            |  let dbCluster = if ($cluster->instanceOf(StoreMappingClusteredValueSpecification) && $cluster->cast(@StoreMappingClusteredValueSpecification).store->toOne()->instanceOf(meta::relational::metamodel::Database),| $cluster, | $firstDbCluster->at(0)->cast(@StoreMappingClusteredValueSpecification));
-              let query = $dbCluster.val->match([r:ExtendedRoutedValueSpecification[1]|$r.value, v:ValueSpecification[1]|$v])->cast(@FunctionExpression)->toSQLQuery($mapping, $vars, [], $debug, $extensions);
+              let query = $dbCluster.val->match([r:ExtendedRoutedValueSpecification[1]|$r.value, v:ValueSpecification[1]|$v])->cast(@FunctionExpression)->toSQLQuery($mapping, [], $vars, [], $debug, $extensions);
               let newQuery = if($sqlQueryPostProcessors->isEmpty(), | $query, | $sqlQueryPostProcessors->fold({p,sql | $p->eval($sql->cast(@SelectSQLQuery)).values->toOne()}, $query));
               ^$sqlResult(shouldWarn=($sqlResult.shouldWarn || !$clusters->tail()->isEmpty()),
                           sqlQueries=$sqlResult.sqlQueries->concatenate($newQuery));

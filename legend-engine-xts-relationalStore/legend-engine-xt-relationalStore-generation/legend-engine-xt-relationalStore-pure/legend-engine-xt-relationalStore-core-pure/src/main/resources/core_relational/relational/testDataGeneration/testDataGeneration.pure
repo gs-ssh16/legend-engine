@@ -402,7 +402,7 @@ function meta::relational::testDataGeneration::generateTestDataForNestedViewTree
       pair($tr.first->cast(@Table), ^Table(name=$tempName, schema=^Schema(name='default', database=^Database(name='default')), temporaryTable=true));
    });
 
-   let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), ^Map<String, List<Any>>());
+   let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), [], ^Map<String, List<Any>>());
    let viewQuery = meta::relational::functions::pureToSqlQuery::processRelationalMappingSpecification($relationTree.view, [], JoinType.LEFT_OUTER, '', true, -1, true, [], $pure2SqlState, noDebug(), $extensions);
    let viewQueryReprocessed = $viewQuery.select->meta::relational::postProcessor::fixTables($oldToNew)->cast(@SelectSQLQuery);
    let viewSql = postProcessQuery($exeCtx, $viewQueryReprocessed, $runtime, ^Database(name='default'), $extensions).query->sqlQueryToStringPretty($dbConnection.type, $dbConnection.timeZone, $dbConnection.quoteIdentifiers, $extensions);
@@ -528,7 +528,7 @@ function <<access.protected>> meta::relational::testDataGeneration::getRowIdenti
       | []
    );
    let mainAlias = ^TableAlias(name = 'main', relationalElement=^Table(name=$tempName, columns=$root.columns, temporaryTable=true, schema=^Schema(name='default', database=^Database(name='default'))));
-   let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), ^Map<String, List<Any>>());
+   let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), [], ^Map<String, List<Any>>());
    let viewQuery = meta::relational::functions::pureToSqlQuery::processRelationalMappingSpecification($view, [], JoinType.LEFT_OUTER, '', true, -1, true, [], $pure2SqlState, noDebug(), $extensions).select;
    let viewQueryWithPKs = $viewQuery->recursiveAddPksWithMilestoning($viewMainTable, $config, $extensions);
    let relatedAlias = ^TableAlias(name = $view.name, relationalElement=$viewQueryWithPKs);
@@ -1055,7 +1055,7 @@ function meta::relational::testDataGeneration::executionPlan::planTestDataGenera
                                       })->meta::relational::functions::pureToSqlQuery::orFilters($extensions)
                                   );,
                                 | let mainAlias = ^TableAlias(name = 'main', relationalElement=^SelectSQLQuery(data=^RootJoinTreeNode(alias=^TableAlias(name='root', relationalElement=^meta::relational::functions::pureToSqlQuery::metamodel::VarSetPlaceHolder(varName=$parentResPlaceHolder->toOne())))));
-                                  let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), ^Map<String, List<Any>>());
+                                  let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), [], ^Map<String, List<Any>>());
                                   let viewQuery = meta::relational::functions::pureToSqlQuery::processRelationalMappingSpecification($view, [], JoinType.LEFT_OUTER, '', true, -1, true, [], $pure2SqlState, noDebug(), $extensions).select;
                                   let viewQueryWithPKs = $viewQuery->recursiveAddPksWithMilestoning($table, $config, $extensions);
                                   let relatedAlias = ^TableAlias(name = $view.name, relationalElement=$viewQueryWithPKs);
@@ -1147,7 +1147,7 @@ function meta::relational::testDataGeneration::executionPlan::planTestDataGenera
                                                     && $x.resultType->cast(@RelationResultType).relationType == RelationType.TABLE)->cast(@AllocationExecutionNode)
                                        ->map(x | pair(^RelationPointer(name=$x.resultType->cast(@RelationResultType).relationName, schemaName=$x.resultType->cast(@RelationResultType).schemaName, database=$x.resultType->cast(@RelationResultType).database),
                                                       ^SelectSQLQuery(data=^RootJoinTreeNode(alias=^TableAlias(name='root', relationalElement=^meta::relational::functions::pureToSqlQuery::metamodel::VarSetPlaceHolder(varName=$x.varName))))));
-      let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), ^Map<String, List<Any>>());
+      let pure2SqlState = meta::relational::functions::pureToSqlQuery::defaultState(^Mapping(), [], ^Map<String, List<Any>>());
       let viewQuery     = meta::relational::functions::pureToSqlQuery::processRelationalMappingSpecification($relationTree.view, [], JoinType.LEFT_OUTER, '', true, -1, true, [], $pure2SqlState, noDebug(), $extensions);
       let viewQueryReprocessed  = $viewQuery.select->fixRelations($tableOldToNew)->quoteVarPlaceHolderTableAliasColumnsIfNotQuouted()->cast(@SelectSQLQuery);
       let viewRelationDataQuery = ^RelationDataSelectSqlQuery(

@@ -75,7 +75,7 @@ function meta::relational::mutation::executionPlan::generateNodeForSameConnectio
 {
   let store = $sq.store->cast(@Database);
   let queryExeCtx = if($exeCtx->instanceOf(RelationalExecutionContext),|$exeCtx,|[])->cast(@RelationalExecutionContext);
-  let originalQuery = $fe.parametersValues->at(0)->toOne()->toSQLQuery($mapping, $sq.inScopeVars, $queryExeCtx, $debug, $extensions);
+  let originalQuery = $fe.parametersValues->at(0)->toOne()->toSQLQuery($mapping, $runtime->connectionByElement($store)->match([dbc: meta::external::store::relational::runtime::DatabaseConnection[1] | $dbc, a:Any[*] | []]), $sq.inScopeVars, $queryExeCtx, $debug, $extensions);
   let postProcessor = $originalQuery->postProcessSQLQuery($store, $ext, $mapping, $runtime, $exeCtx, $extensions);
   let table = $fe.parametersValues->at(1)->cast(@InstanceValue).values->cast(@RelationStoreAccessor<Any>).sourceElement->cast(@Table)->toOne();
 

@@ -374,6 +374,12 @@ function <<access.private>> meta::pure::router::store::routing::wrapValueSpecifi
 // Special Functions
 // ===================================================================================
 
+Class meta::pure::router::store::routing::StoreUnionProjectFunctionExpression extends SimpleFunctionExpression
+{
+  setImpls: InstanceSetImplementation[*];
+  splitUnionRoutingPairs: Pair<Mapping, Function<{DebugContext[1]->ValueSpecification[1]}>>[*]; // (Split mapping and function to route expression with the split mapping)
+}
+
 function  meta::pure::router::store::routing::specializedFunctionExpressionRouterProcessorForStore(extensions:meta::pure::extension::Extension[*]):Pair<Function<{FunctionExpression[1]->Boolean[1]}>, Function<{Function<Any>[1], FunctionExpression[1], RoutingState[1], meta::pure::runtime::ExecutionContext[1], Map<VariableExpression, ValueSpecification>[1], Map<String, List<Any>>[1], meta::pure::extension::Extension[*], DebugContext[1]->RoutingState[1]}>>[*]
 {
   [
@@ -536,8 +542,107 @@ function  meta::pure::router::store::routing::specializedFunctionExpressionRoute
                   routingStrategy = $newRoutingStrategy,
                   value           = $routedSave);
         }
+    ),
+    pair(
+      {fe:FunctionExpression[1] | $fe.func->in([project_T_MANY__Path_MANY__TabularDataSet_1_, project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_, project_T_MANY__ColumnSpecification_MANY__TabularDataSet_1_])},
+      {f:Function<Any>[1], fe:FunctionExpression[1], state:RoutingState[1], executionContext:meta::pure::runtime::ExecutionContext[1], vars:Map<VariableExpression, ValueSpecification>[1], inScopeVars:Map<String, List<Any>>[1], extensions:meta::pure::extension::Extension[*], debug:DebugContext[1] |
+        let processedFunction = $f->routeFunctionExpressionFunctionDefinition($fe, $state, $executionContext, $vars, $inScopeVars->putAll($f->openVariableValues()), $extensions, $debug);
+        let processedExpr = $processedFunction.value->evaluateAndDeactivate()->match([
+          {rfe: FunctionExpression[1] | 
+            $rfe.parametersValues->evaluateAndDeactivate()->at(0)->match([
+              {smrv: StoreMappingRoutedValueSpecification[1] |
+                if (($smrv.sets->size() == 1) && $smrv.sets->toOne()->instanceOf(OperationSetImplementation) && $smrv.sets->toOne()->cast(@OperationSetImplementation).operation == meta::pure::router::operations::union_OperationSetImplementation_1__SetImplementation_MANY_,
+                    | let opSet = $smrv.sets->toOne()->cast(@OperationSetImplementation);
+                      let resolvedSets = $opSet->resolveOperation($smrv.mapping);
+                      let filteredGetAllClass = $smrv->fetchFilteredGetAllClass();
+                      if ($filteredGetAllClass->isNotEmpty() && $resolvedSets->forAll(rs | $rs.class == $filteredGetAllClass),
+                          | if ($resolvedSets->size() > 1,
+                                | let splitUnionRoutingPairs = $resolvedSets->map({rset |
+                                    let newMap = ^Mapping(name = 'gen_split_union_routing_mapping');
+                                    $newMap->mutateAdd(
+                                      'includes',
+                                      ^MappingInclude(owner = $newMap, included = $smrv.mapping)
+                                    );
+                                    $newMap->mutateAdd(
+                                      'classMappings',
+                                      ^$opSet(
+                                        id = 'gen_split_union_' + $opSet.id,
+                                        parent = $newMap,
+                                        parameters = ^SetImplementationContainer(id = $rset.id, setImplementation = $rset)
+                                      )
+                                    );
+                                    pair(
+                                      $newMap,
+                                      {debugCtx: DebugContext[1] |
+                                        let dummy = {|'ok'};
+                                        routeFunction(
+                                          ^$dummy(expressionSequence = $fe),
+                                          getRoutingStrategyFromMappingAndRuntime($newMap, $smrv.runtime),
+                                          $executionContext,
+                                          $inScopeVars,
+                                          false,
+                                          $extensions,
+                                          $debugCtx
+                                        ).expressionSequence->evaluateAndDeactivate()->at(0);
+                                      }
+                                    );
+                                  });
+                                  ^$processedFunction(
+                                      value = ^StoreUnionProjectFunctionExpression(
+                                        func = $rfe.func,
+                                        setImpls = $resolvedSets,
+                                        parametersValues = $rfe.parametersValues,
+                                        importGroup = $rfe.importGroup,
+                                        genericType = $rfe.genericType,
+                                        multiplicity = $rfe.multiplicity,
+                                        splitUnionRoutingPairs = $splitUnionRoutingPairs
+                                      )->evaluateAndDeactivate()
+                                  );,
+                                | $processedFunction
+                            ),
+                          | $processedFunction
+                      );,
+                    | $processedFunction
+                )
+              },
+              {a: Any[*] | $processedFunction}
+            ])
+          },
+          {a: Any[*] | $processedFunction}
+        ]);
+      }
     )
   ];
+}
+
+function <<access.private>> meta::pure::router::store::routing::fetchFilteredGetAllClass(vs: ValueSpecification[1]): Class<Any>[0..1]
+{
+  $vs->byPassRouterInfo()->match([
+    {fe: FunctionExpression[1] |
+      if (
+        [
+          pair(
+            {|$fe.func == meta::pure::functions::collection::filter_T_MANY__Function_1__T_MANY_},
+            {|$fe.parametersValues->evaluateAndDeactivate()->at(0)->fetchFilteredGetAllClass()}
+          ),
+          pair(
+            {|$fe.func->meta::pure::router::routing::isGetAllFunction()},
+            {|
+              $fe.parametersValues->evaluateAndDeactivate()->at(0)->meta::pure::router::utils::deepByPassRouterInfo()->match([
+                iv: InstanceValue[1] | $iv.values->evaluateAndDeactivate()->match([
+                  cls: Class<Any>[1] | $cls,
+                  a: Any[*] | []
+                ]),
+                a: Any[*] | []
+              ])
+            }
+          )
+        ],
+        {|[]}
+      )
+    },
+    {a: Any[*] | []}
+  ])
 }
 
 // ===================================================================================

@@ -117,6 +117,7 @@ Class meta::relational::functions::pureToSqlQuery::State
    pushDownEnumTransformations :Boolean[1] = false;
    currentWindow : WindowColumn[0..1];
    idToClassMapping : Map<String, List<SetImplementation>>[1];
+   databaseConnection: meta::external::store::relational::runtime::DatabaseConnection[0..1];
 }
 
 Class meta::relational::functions::pureToSqlQuery::FunctionParamScope
@@ -168,9 +169,9 @@ Class meta::relational::functions::pureToSqlQuery::ColumnGroup
     columns : RelationalOperationElement[*];
 }
 
-function meta::relational::functions::pureToSqlQuery::toSQLQuery(vs:ValueSpecification[1], mapping:Mapping[0..1], inScopeVars:Map<String, List<Any>>[1], execCtx: RelationalExecutionContext[0..1], debug:DebugContext[1], extensions:Extension[*]):SQLQuery[1]
+function meta::relational::functions::pureToSqlQuery::toSQLQuery(vs:ValueSpecification[1], mapping:Mapping[0..1], databaseConnection:meta::external::store::relational::runtime::DatabaseConnection[0..1], inScopeVars:Map<String, List<Any>>[1], execCtx: RelationalExecutionContext[0..1], debug:DebugContext[1], extensions:Extension[*]):SQLQuery[1]
 {
-   toSQLQuery($vs, $mapping, $inScopeVars, $debug, $execCtx->relationalExecutionContextToState(defaultState($mapping, $inScopeVars, $execCtx, $extensions)), $extensions);
+   toSQLQuery($vs, $debug, $execCtx->relationalExecutionContextToState(defaultState($mapping, $databaseConnection, $inScopeVars, $execCtx, $extensions)), $extensions);
 }
 
 function <<access.private>> meta::relational::functions::pureToSqlQuery::processQuery(vs:ValueSpecification[1], state:State[1], debug:DebugContext[1], extensions:Extension[*]):SelectWithCursor[1]
@@ -196,7 +197,7 @@ function <<access.private>> meta::relational::functions::pureToSqlQuery::applyPo
    ]);
 }
 
-function meta::relational::functions::pureToSqlQuery::toSQLQuery(vs:ValueSpecification[1], mapping:Mapping[0..1], inScopeVars:Map<String, List<Any>>[1], debug:DebugContext[1], state:State[1], extensions:Extension[*]):SQLQuery[1]
+function meta::relational::functions::pureToSqlQuery::toSQLQuery(vs:ValueSpecification[1], debug:DebugContext[1], state:State[1], extensions:Extension[*]):SQLQuery[1]
 {
    $vs
       ->processQuery($state, $debug, $extensions)
@@ -208,12 +209,12 @@ function meta::relational::functions::pureToSqlQuery::toSQLQuery(vs:ValueSpecifi
       ->orderImmediateChildNodeByJoinAliasDependencies();
 }
 
-function meta::relational::functions::pureToSqlQuery::toSelectWithCursor(functionExpression:FunctionExpression[1], mapping:Mapping[1], inScopeVars:Map<String, List<Any>>[1], execCtx: RelationalExecutionContext[0..1], debug:DebugContext[1], extensions:Extension[*]):SelectWithCursor[1]
+function meta::relational::functions::pureToSqlQuery::toSelectWithCursor(functionExpression:FunctionExpression[1], mapping:Mapping[1], databaseConnection:meta::external::store::relational::runtime::DatabaseConnection[0..1], inScopeVars:Map<String, List<Any>>[1], execCtx: RelationalExecutionContext[0..1], debug:DebugContext[1], extensions:Extension[*]):SelectWithCursor[1]
 {
-   toSelectWithCursor($functionExpression, $mapping, $inScopeVars, $debug, $execCtx->relationalExecutionContextToState(defaultState($mapping, $inScopeVars, $execCtx, $extensions)), $extensions);
+   toSelectWithCursor($functionExpression, $debug, $execCtx->relationalExecutionContextToState(defaultState($mapping, $databaseConnection, $inScopeVars, $execCtx, $extensions)), $extensions);
 }
 
-function meta::relational::functions::pureToSqlQuery::toSelectWithCursor(functionExpression:FunctionExpression[1], mapping:Mapping[1], inScopeVars:Map<String, List<Any>>[1], debug:DebugContext[1], state:State[1], extensions:Extension[*]):SelectWithCursor[1]
+function meta::relational::functions::pureToSqlQuery::toSelectWithCursor(functionExpression:FunctionExpression[1], debug:DebugContext[1], state:State[1], extensions:Extension[*]):SelectWithCursor[1]
 {
    let swc = $functionExpression
       ->processQuery($state, $debug, $extensions)
@@ -294,10 +295,10 @@ function  meta::relational::functions::pureToSqlQuery::relationalExecutionContex
    )
 }
 
-function meta::relational::functions::pureToSqlQuery::defaultState(mapping:Mapping[0..1], inScopeVars:Map<String, List<Any>>[1]):State[1]
+function meta::relational::functions::pureToSqlQuery::defaultState(mapping:Mapping[0..1], databaseConnection:meta::external::store::relational::runtime::DatabaseConnection[0..1], inScopeVars:Map<String, List<Any>>[1]):State[1]
 {
    let map = $mapping->defaultIfEmpty(^Mapping());
-   ^State(inScopeVars=$inScopeVars, supportedFunctions=getSupportedFunctions(), mapping=$mapping, inProject=false, inProjectFunctions=false, inFilter=false, filterChainDepth=0, processingProjectionThread=false, shouldIsolate=true, contextBasedSupportedFunctions=getContextBasedSupportedFunctions(), idToClassMapping=buildClassMappingsById($map->toOne()));
+   ^State(inScopeVars=$inScopeVars, supportedFunctions=getSupportedFunctions(), mapping=$mapping, inProject=false, inProjectFunctions=false, inFilter=false, filterChainDepth=0, processingProjectionThread=false, shouldIsolate=true, contextBasedSupportedFunctions=getContextBasedSupportedFunctions(), idToClassMapping=buildClassMappingsById($map->toOne()), databaseConnection=$databaseConnection);
 }
 
 function meta::relational::functions::pureToSqlQuery::getClassMappingById(state: State[1], id: String[1]): SetImplementation[*]
@@ -305,9 +306,9 @@ function meta::relational::functions::pureToSqlQuery::getClassMappingById(state:
   $state.idToClassMapping->getClassMappingById($id);
 }
 
-function meta::relational::functions::pureToSqlQuery::defaultState(mapping:Mapping[0..1], inScopeVars:Map<String, List<Any>>[1], exeCtx:meta::pure::runtime::ExecutionContext[0..1], extensions:Extension[*]):State[1]
+function meta::relational::functions::pureToSqlQuery::defaultState(mapping:Mapping[0..1], databaseConnection:meta::external::store::relational::runtime::DatabaseConnection[0..1], inScopeVars:Map<String, List<Any>>[1], exeCtx:meta::pure::runtime::ExecutionContext[0..1], extensions:Extension[*]):State[1]
 {
-   let initialState = defaultState($mapping,$inScopeVars);
+   let initialState = defaultState($mapping, $databaseConnection, $inScopeVars);
       let context = if($exeCtx->isEmpty(),
              | $initialState,
              | if($exeCtx->toOne()->meta::pure::executionPlan::featureFlag::contextHasFlag(meta::pure::executionPlan::features::Feature.PUSH_DOWN_ENUM_TRANSFORM),
@@ -668,7 +669,15 @@ function meta::relational::functions::pureToSqlQuery::processPropertyFunctionExp
                                                       ]);
                               processProperty(
                                            $property,
-                                           $propertyOwnerClass,
+                                           $fe.parametersValues->evaluateAndDeactivate()->at(0)->byPassRouterInfo()->match([
+                                            {var: VariableExpression[1] |
+                                              if ($var.name == 'this' && $state.leftSideOfQualifier->evaluateAndDeactivate()->isNotEmpty(),
+                                                  | $state.leftSideOfQualifier->evaluateAndDeactivate()->toOne().genericType->genericTypeClass(),
+                                                  | $propertyOwnerClass
+                                              )
+                                            },
+                                            {a: Any[*] | $propertyOwnerClass}
+                                           ]),
                                            $baseOperation.currentPropertyMapping,
                                            $state.propertyMappingFromRouter,
                                            $baseOperation.element->cast(@SelectWithCursor),
@@ -2129,11 +2138,11 @@ function meta::relational::functions::pureToSqlQuery::processFunctionExpressionF
 
                   let sqlQuery = $varValue->match([
                           sc:StoreMappingClusteredValueSpecification[1] |
-                            $sc.val->processQuery(defaultState($sc.mapping, $sc.openVars, $sc.exeCtx, $extensions)->withFunctionParamScope($scopes), $context->shift(), $extensions);,
+                            $sc.val->processQuery(defaultState($sc.mapping, $state.databaseConnection, $sc.openVars, $sc.exeCtx, $extensions)->withFunctionParamScope($scopes), $context->shift(), $extensions);,
                           sc:StoreClusteredValueSpecification[1] |
-                            $sc.val->processQuery(defaultState([],  $sc.openVars, $sc.exeCtx, $extensions)->withFunctionParamScope($scopes), $context->shift(), $extensions);,
+                            $sc.val->processQuery(defaultState([], $state.databaseConnection,  $sc.openVars, $sc.exeCtx, $extensions)->withFunctionParamScope($scopes), $context->shift(), $extensions);,
                           fe: FunctionExpression[1] |
-                            $fe->processQuery(defaultState([],  newMap([])->cast(@Map<String, List<Any>>))->withFunctionParamScope($scopes), $context->shift(), $extensions);,
+                            $fe->processQuery(defaultState([], $state.databaseConnection,  newMap([])->cast(@Map<String, List<Any>>))->withFunctionParamScope($scopes), $context->shift(), $extensions);,
                           a: Any[1] |
                             fail($a->type()->elementToPath() + ' not supported on multi expression')->cast(@SelectWithCursor)->toOne();
                   ]);
@@ -3865,7 +3874,7 @@ function meta::relational::functions::pureToSqlQuery::processRelationFunctionCla
   let routedRelationFunction = $r->routeRelationFunctionSetImplementation($state.mapping->toOne(), $extensions)->cast(@RelationFunctionInstanceSetImplementation).relationFunction;
   let relationExpression = $routedRelationFunction.expressionSequence->evaluateAndDeactivate()->at(0)->cast(@ClusteredValueSpecification).val;
   let newCursor = ^SelectWithCursor(select=^SelectSQLQuery());
-  let newState = defaultState($state.mapping, $state.inScopeVars);
+  let newState = defaultState($state.mapping, $state.databaseConnection, $state.inScopeVars);
   let cursor = $relationExpression->processValueSpecification([], $newCursor, $vars, $newState, $joinType, $nodeId, ^List<ColumnGroup>(), $context, $extensions)->toOne()->cast(@SelectWithCursor);
   ^$cursor(select=$cursor.select->moveSelectQueryToSubSelect($cursor.currentTreeNode, [], $nodeId, $context, $extensions));
 }
@@ -5715,7 +5724,7 @@ function meta::relational::functions::pureToSqlQuery::processTdsContains(f:Funct
 {
    let funcs = $f->instanceValuesAtParameter(1, $vars, $state.inScopeVars)->cast(@meta::pure::metamodel::function::Function<Any>);
 
-   let tdsSelect_PreFilter = processValueSpecification($f.parametersValues->at(2), [], ^SelectWithCursor(select=^SelectSQLQuery()), $vars, defaultState($state.mapping, $state.inScopeVars), $joinType, $nodeId, $aggFromMap, $context, $extensions)->toOne()->cast(@SelectWithCursor);
+   let tdsSelect_PreFilter = processValueSpecification($f.parametersValues->at(2), [], ^SelectWithCursor(select=^SelectSQLQuery()), $vars, defaultState($state.mapping, $state.databaseConnection, $state.inScopeVars), $joinType, $nodeId, $aggFromMap, $context, $extensions)->toOne()->cast(@SelectWithCursor);
    let tdsSelect = $tdsSelect_PreFilter.select->pushExtraFilteringOperation($extensions);
    let tdsColumns = $tdsSelect.data.alias.relationalElement->toOne()->match([
       v: VarSetPlaceHolder[1] | $v.columns,
@@ -5752,7 +5761,7 @@ function meta::relational::functions::pureToSqlQuery::processTdsContainsWithLamb
    let funcs = $f->instanceValuesAtParameter(1, $vars, $state.inScopeVars)->cast(@meta::pure::metamodel::function::Function<Any>);
    let ids = $f->instanceValuesAtParameter(2, $vars, $state.inScopeVars)->cast(@String);
 
-   let tdsSelect_PreFilter = processValueSpecification($f.parametersValues->at(3), [], ^SelectWithCursor(select=^SelectSQLQuery()), $vars, defaultState($state.mapping, $state.inScopeVars), $joinType, $nodeId, $aggFromMap, $context, $extensions)->toOne()->cast(@SelectWithCursor);
+   let tdsSelect_PreFilter = processValueSpecification($f.parametersValues->at(3), [], ^SelectWithCursor(select=^SelectSQLQuery()), $vars, defaultState($state.mapping, $state.databaseConnection, $state.inScopeVars), $joinType, $nodeId, $aggFromMap, $context, $extensions)->toOne()->cast(@SelectWithCursor);
    let tdsSelect = $tdsSelect_PreFilter.select->pushExtraFilteringOperation($extensions);
    let rightTableAlias = ^TableAlias(name='"tdsContains_TDS_"'+$nodeId, relationalElement=$tdsSelect);
    let rightSelect = ^SelectSQLQuery(data = ^RootJoinTreeNode(alias = $rightTableAlias));
@@ -6371,6 +6380,51 @@ function meta::relational::functions::pureToSqlQuery::isSupported(f:FunctionDefi
 
 function meta::relational::functions::pureToSqlQuery::processProject(ids:String[*], functions:meta::pure::metamodel::function::Function<Any>[*], docs:String[*], expression:FunctionExpression[1], operation:SelectWithCursor[1], vars:Map<VariableExpression, ValueSpecification>[1], state:State[1], nodeId:String[1], aggFromMap:List<ColumnGroup>[1], context:DebugContext[1],wc:WindowColumnSpecification<Any>[*], extensions:Extension[*]):RelationalOperationElement[1]
 {
+  let shouldSplitRootUnion = (
+    $state.insertDriverTablePkInTempTable->isEmpty() && // Not in import data flow
+    ($state.databaseConnection->isNotEmpty() && $state.databaseConnection->toOne()->isGenerationFeatureEnabledInConnection(splitRootUnionGenerationFeatureName())) && // Generation Feature enabled
+    $wc->isEmpty() // No Window Columns
+  );
+
+  if ($expression->instanceOf(StoreUnionProjectFunctionExpression) && $shouldSplitRootUnion,
+      | let storeUnionProjectExpr = $expression->cast(@StoreUnionProjectFunctionExpression);
+        let setImplIds = $storeUnionProjectExpr.setImpls.id;
+        print(if(!$context.debug, |'', | $context.space+'>Splitting root union project query with set implementations: '+$setImplIds->joinStrings('[',', ',']')+'\n'));
+        let unionQueries = $storeUnionProjectExpr.splitUnionRoutingPairs->size()->range()->map(i |
+          let splitPair = $storeUnionProjectExpr.splitUnionRoutingPairs->at($i);
+          print(if(!$context.debug, |'', | $context->shift().space+'>Routing single set project query for root set implementation - '+$setImplIds->at($i)+'\n'));
+          let routed = $splitPair.second->eval($context->shift()->shift())->cast(@StoreMappingClusteredValueSpecification).val;
+          print(if(!$context.debug, |'', | $context->shift().space+'>Generating single set project SelectSQLQuery for root set implementation - '+$setImplIds->at($i)+'\n'));
+          let result = toSQLQuery($routed, $context->shift()->shift(), ^$state(mapping = $splitPair.first->toOne(), idToClassMapping=buildClassMappingsById($splitPair.first)), $extensions)->cast(@SelectSQLQuery);
+          print(if(!$context.debug, |'', | $context->shift().space+'>Generated single set project query for root set implementation - '+$setImplIds->at($i)+': '+$result->meta::relational::functions::sqlQueryToString::processOperation(meta::relational::runtime::DatabaseType.DebugPrint, $extensions)+'\n'));
+          $result;
+        );
+        let firstSel = $unionQueries->at(0);
+        let rootRelation = ^TableAlias(name = 'union', relationalElement = ^UnionAll(queries = $unionQueries));
+        let newRoot = ^RootJoinTreeNode(alias = $rootRelation);
+        
+        ^SelectWithCursor(
+          select = ^$firstSel(
+            columns = $firstSel.columns->map(c|$c->match([
+              a:Alias[1] | ^$a(relationalElement = ^TableAliasColumnName(alias = $rootRelation, columnName = $a.name)),
+              t:TableAliasColumn[1] | ^$t(alias = $rootRelation)
+            ])),
+            data = $newRoot,
+            savedFilteringOperation = [],
+            leftSideOfFilter = if($firstSel.leftSideOfFilter->isEmpty(),|[],|$newRoot),
+            filteringOperation = [],
+            havingOperation = [],
+            groupBy = [],
+            extraFilteringOperation = []
+          ),
+          currentTreeNode = $newRoot
+        );,
+      | processProjectWithoutRootUnionSplit($ids, $functions, $docs, $expression, $operation, $vars, $state, $nodeId, $aggFromMap, $context, $wc, $extensions)
+  );
+}
+
+function meta::relational::functions::pureToSqlQuery::processProjectWithoutRootUnionSplit(ids:String[*], functions:meta::pure::metamodel::function::Function<Any>[*], docs:String[*], expression:FunctionExpression[1], operation:SelectWithCursor[1], vars:Map<VariableExpression, ValueSpecification>[1], state:State[1], nodeId:String[1], aggFromMap:List<ColumnGroup>[1], context:DebugContext[1],wc:WindowColumnSpecification<Any>[*], extensions:Extension[*]):RelationalOperationElement[1]
+{
    assertEquals($ids->size(), $functions->size(), | 'The number of column names must match the number of functions. Please provide a column name for each projection function ('+$ids->size()->toString()+' != '+$functions->size()->toString()+')');
    assertEquals($ids->size(), $ids->removeDuplicates()->size(), 'The list of Paths provided to project can\'t contain duplicate names. Please use ! to provide an alias. Example:#/Person/lastName!newAlias#');
 
@@ -6385,6 +6439,7 @@ function meta::relational::functions::pureToSqlQuery::processProject(ids:String[
    print(if(!$context.debug, |'',
             | $context.space+'*>Process Project: '+$functions->map(f|$f->match([p:Path<Nil,Any|1>[1]|$p->printPath('/'), f:FunctionDefinition<Any>[1]|'\'Function\'']))->makeString(', ')+'\n'+
               $context.space+'   (P)Source Operation>  '+$operation->cast(@SelectWithCursor).select->meta::relational::functions::sqlQueryToString::processOperation(meta::relational::runtime::DatabaseType.DebugPrint, $extensions)+'\n'));
+   
    let sourceQuery = processValueSpecification($expression.parametersValues->at(0), [], $operation, $vars, ^$state(inProject=true), JoinType.LEFT_OUTER, $nodeId, $aggFromMap, $context->shift(), $extensions)->toOne()->cast(@SelectWithCursor);
 
    let sourceSelect = $sourceQuery.select;

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import meta::external::store::relational::runtime::*;
+
 Class meta::external::store::relational::runtime::GenerationFeaturesConfig extends meta::external::store::relational::runtime::RelationalQueryGenerationConfig
 [
   noDuplicatesBetweenEnabledAndDisabled: $this.enabled->forAll(e | !$e->in($this.disabled)),
@@ -28,6 +30,27 @@ Class meta::external::store::relational::runtime::GenerationFeaturesConfig exten
 function meta::external::store::relational::runtime::knownGenerationFeatures(): String[*]
 {
   [
-    meta::relational::postProcessor::removeUnionOrJoins::removeUnionOrJoinsGenerationFeatureName()
+    meta::external::store::relational::runtime::removeUnionOrJoinsGenerationFeatureName(),
+    meta::external::store::relational::runtime::splitRootUnionGenerationFeatureName()
   ]
+}
+
+function meta::external::store::relational::runtime::removeUnionOrJoinsGenerationFeatureName(): String[1]
+{
+  'REMOVE_UNION_OR_JOINS'
+}
+
+function meta::external::store::relational::runtime::splitRootUnionGenerationFeatureName(): String[1]
+{
+  'SPLIT_ROOT_UNION'
+}
+
+function meta::external::store::relational::runtime::isGenerationFeatureEnabledInConnection(dbConnection: meta::external::store::relational::runtime::DatabaseConnection[1], feature: String[1]): Boolean[1]
+{
+  $dbConnection.queryGenerationConfigs->exists(cfg | $cfg->instanceOf(GenerationFeaturesConfig) && $cfg->cast(@GenerationFeaturesConfig).enabled->contains($feature))
+}
+
+function meta::external::store::relational::runtime::isGenerationFeatureDisabledInConnection(dbConnection: meta::external::store::relational::runtime::DatabaseConnection[1], feature: String[1]): Boolean[1]
+{
+  $dbConnection.queryGenerationConfigs->exists(cfg | $cfg->instanceOf(GenerationFeaturesConfig) && $cfg->cast(@GenerationFeaturesConfig).disabled->contains($feature))
 }

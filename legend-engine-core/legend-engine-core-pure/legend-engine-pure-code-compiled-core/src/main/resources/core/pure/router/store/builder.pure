@@ -44,26 +44,26 @@ function meta::pure::router::store::routing::enrichStoreMappingRoutedValueSpecif
    if(!$setsInScope->isEmpty(),
      |
       // Sets
-      print(if($debug.debug,|'\n'+$debug.space+'Sets found:\n', |''));
+      print(if($debug.debug,|$debug.space+'Sets found:\n', |''));
       print(if($debug.debug,|$setsInScope->map(s|$debug.space+'   ['+$s.id->toString()+'|'+$s.sets->map(si|$si.id)->joinStrings(',')+']')->joinStrings('\n')+'\n',|''));
 
       // Permutation
-      print(if($debug.debug,|'\n'+$debug.space+'Process Permutations ('+$setsInScope.id->size()->toString()+')\n', |''));
+      print(if($debug.debug,|$debug.space+'Process Permutations ('+$setsInScope.id->size()->toString()+')\n', |''));
       let permutations = $setsInScope->permute();
       print(if($debug.debug,|$permutations->map(l|$l.values->map(p|$debug.space + '   ['+$p.id->toString()+'|'+$p.sets->toOne().id->toString()+']')->makeString(', '))->makeString('\n')+'\n', |''));
       let idToClassMapping = buildClassMappingsById($mapping);
       // Build
-      print(if($debug.debug,|'\n'+$debug.space+'Building new queries\n', |''));
-      let built = $permutations->map(p|print(if($debug.debug,|'  Query '+$permutations->indexOf($p)->toString()+'\n', |''));
+      print(if($debug.debug,|$debug.space+'Building new queries\n', |''));
+      let built = $permutations->map(p|print(if($debug.debug,|$debug.space+'  Query '+$permutations->indexOf($p)->toString()+'\n', |''));
                                        $newRoutedVs->evaluateAndDeactivate()->build($p, [], $mapping, $idToClassMapping, $exeCtx, $extensions, $debug););
 
-      print(if($debug.debug,|'\n'+$debug.space+'Built queries:'+$built->size()->toString()+'\n', |''));
+      print(if($debug.debug,|$debug.space+'Built queries:'+$built->size()->toString()+'\n', |''));
 
       print(if($debug.debug,|$built->map(b|$debug.space+'   - '+$b->asString())->makeString('\n')+'\n',|''));
 
       let filteredBuilt = $built->filter(v|!$v->instanceOf(Void));
 
-      print(if($debug.debug,|'\n'+$debug.space+'Filtered Built queries:'+$filteredBuilt->size()->toString()+'\n', |''));
+      print(if($debug.debug,|$debug.space+'Filtered Built queries:'+$filteredBuilt->size()->toString()+'\n', |''));
       let nbuilt = if($permutations->size() > 1,
                      | // Which concatenation to use (dataType/TDS = union all / type = union)?
                       let returnType = $filteredBuilt->at(0)->match([e:StoreMappingRoutedValueSpecification[1]|$e.value.genericType, v:ValueSpecification[1]|$v.genericType]);

@@ -277,23 +277,23 @@ function meta::pure::graphFetch::getMultiValueSpecBasedOnSetImplPermutation(rout
   let setsInScope = $permutationSetList->map(x | ^$x(sets = $x.sets->map(s | $s->resolveOperation($routedVs.mapping))));
   let mapping     = $routedVs.mapping;
 
-  print(if($debug.debug,|'\n'+$debug.space+'Sets found:\n', |''));
+  print(if($debug.debug,|$debug.space+'Sets found:\n', |''));
   print(if($debug.debug,|$setsInScope->map(s|$debug.space+'   ['+$s.id->toString()+'|'+$s.sets->map(si|$si.id)->joinStrings(',')+']')->joinStrings('\n')+'\n',|''));
 
-  print(if($debug.debug,|'\n'+$debug.space+'Process Permutations ('+$setsInScope.id->size()->toString()+')\n', |''));
+  print(if($debug.debug,|$debug.space+'Process Permutations ('+$setsInScope.id->size()->toString()+')\n', |''));
   let permutations = $setsInScope->meta::pure::router::store::routing::permute();
   print(if($debug.debug,|$permutations->map(l|$l.values->map(p|$debug.space + '   ['+$p.id->toString()+'|'+$p.sets->toOne().id->toString()+']')->makeString(', '))->makeString('\n')+'\n', |''));
 
-  print(if($debug.debug,|'\n'+$debug.space+'Filtered Permutations ('+$setsInScope.id->size()->toString()+')\n', |''));
+  print(if($debug.debug,|$debug.space+'Filtered Permutations ('+$setsInScope.id->size()->toString()+')\n', |''));
   let filteredPermutationSet = $permutations->filter(permSet | $permSet.values.sets->forAll(s | ($s.class == $sourceSetImplementation.class && $s.id == $sourceSetImplementation.id) || $s.class != $sourceSetImplementation.class));
 
   print(if($debug.debug,|$filteredPermutationSet->map(l|$l.values->map(p|$debug.space + '   ['+$p.id->toString()+'|'+$p.sets->toOne().id->toString()+']')->makeString(', '))->makeString('\n')+'\n', |''));
 
-  print(if($debug.debug,|'\n'+$debug.space+'Building new queries\n', |''));
+  print(if($debug.debug,|$debug.space+'Building new queries\n', |''));
   let built = $filteredPermutationSet->map(p | print(if($debug.debug,|'  Query '+$permutations->indexOf($p)->toString()+'\n', |''));
                                            $routedVs->evaluateAndDeactivate()->meta::pure::router::store::routing::build($p, [], $mapping, $exeCtx, $extensions, $debug););
 
-  print(if($debug.debug,|'\n'+$debug.space+'Built queries:'+$built->size()->toString()+'\n', |''));
+  print(if($debug.debug,|$debug.space+'Built queries:'+$built->size()->toString()+'\n', |''));
   print(if($debug.debug,|$built->map(b|$debug.space+'   - '+$b->asString())->makeString('\n')+'\n',|''));
 
   $built->filter(x|!$x->instanceOf(Void))->cast(@StoreMappingRoutedValueSpecification);

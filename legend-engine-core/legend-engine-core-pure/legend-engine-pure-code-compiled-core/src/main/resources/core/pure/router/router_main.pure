@@ -136,20 +136,20 @@ function meta::pure::router::routeFunction(f:FunctionDefinition<Any>[1], routing
    let valueSpecifications = $f.expressionSequence->evaluateAndDeactivate();
 
    // Enriching Function Expressions with relevant info (mapping / binding / platform)
-   print(if($debug.debug,|'\n'+$debug.space+'Enriching Function Expressions with relevant info (mapping / binding / platform) and assigning routing strategy:\n',|''));
+   print(if($debug.debug,|$debug.space+'Enriching Function Expressions with relevant info (mapping / binding / platform) and assigning routing strategy:\n',|''));
    let enrichedExpressions = enrichFunctionExpressions($valueSpecifications, $routingStrategy, $exeCtx, $openVariables, $graphFetchFlow, $extensions, $debug);   
 
    // Enriching Function Expressions with more information based on type of expression (subTypes of ExtendedRoutedValueSpecification)
-   print(if($debug.debug,|'\n'+$debug.space+'Enriching Function Expressions with strategy based info (mapping / binding / platform):\n',|''));
+   print(if($debug.debug,|$debug.space+'Enriching Function Expressions with strategy based info (mapping / binding / platform):\n',|''));
    let enrichedExpressionsAfterStrategyBasedEnrichment = $enrichedExpressions->map(exp | $exp->enrichExpressionWithStrategyBasedEnrichment($exeCtx, $extensions, $debug));
 
    // Clustering Function Expressions into clusters
-   print(if($debug.debug,|'\n'+$debug.space+'Clustering Function Expressions:',|''));
+   print(if($debug.debug,|$debug.space+'Clustering Function Expressions:\n',|''));
    let clusters = $enrichedExpressionsAfterStrategyBasedEnrichment->map(exp| $exp->clusterFunctionExpressions($openVariables, $exeCtx, $extensions, ^$debug(space = $debug.space + '  ')));
 
    // Wrapping Clustered Function Expressions into original function structure
    let result   = ^$f(expressionSequence = $clusters->toOneMany());
-   print(if($debug.debug,|$result->asString()+'\n',|''));
+   print(if($debug.debug,|$debug.space+$result->asString()+'\n',|''));
 
    $result;
 }
@@ -167,7 +167,7 @@ function meta::pure::router::enrichExpressionWithStrategyBasedEnrichment(vs: Ext
 
 function meta::pure::router::clusterFunctionExpressions(vs:ExtendedRoutedValueSpecification[1], openVariables:Map<String, List<Any>>[1], exeCtx: meta::pure::runtime::ExecutionContext[1], extensions:meta::pure::extension::Extension[*], debug:DebugContext[1]):ClusteredValueSpecification[*]
 {
-   print(if($debug.debug,|'\n'+$vs->asString()->debug($debug.space+'Processing: '),|''));
+   print(if($debug.debug,|$vs->asString()->debug($debug.space+'Processing: '),|''));
 
    $vs->match([
      sm: StoreMappingRoutedValueSpecification[1]   | $sm->doCluster($sm.mapping, $sm.runtime, $openVariables, $exeCtx, $extensions, $debug),
