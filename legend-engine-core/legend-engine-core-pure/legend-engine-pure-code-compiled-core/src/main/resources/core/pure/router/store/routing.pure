@@ -536,10 +536,85 @@ function  meta::pure::router::store::routing::specializedFunctionExpressionRoute
                   routingStrategy = $newRoutingStrategy,
                   value           = $routedSave);
         }
+    ),
+    pair(
+      {fe:FunctionExpression[1] | $fe.func->in([project_T_MANY__Path_MANY__TabularDataSet_1_, project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_, project_T_MANY__ColumnSpecification_MANY__TabularDataSet_1_])},
+      {f:Function<Any>[1], fe:FunctionExpression[1], state:RoutingState[1], executionContext:meta::pure::runtime::ExecutionContext[1], vars:Map<VariableExpression, ValueSpecification>[1], inScopeVars:Map<String, List<Any>>[1], extensions:meta::pure::extension::Extension[*], debug:DebugContext[1] |
+        let processedFunction = $f->routeFunctionExpressionFunctionDefinition($fe, $state, $executionContext, $vars, $inScopeVars->putAll($f->openVariableValues()), $extensions, $debug);
+        let processedExpr = $processedFunction.value->evaluateAndDeactivate()->match([
+          {rfe: FunctionExpression[1] | 
+            $rfe.parametersValues->evaluateAndDeactivate()->at(0)->match([
+              {smrv: StoreMappingRoutedValueSpecification[1] |
+                if (($smrv.sets->size() == 1) && $smrv.sets->toOne()->instanceOf(OperationSetImplementation) && $smrv.sets->toOne()->cast(@OperationSetImplementation).operation == meta::pure::router::operations::root_union_split_OperationSetImplementation_1__SetImplementation_MANY_,
+                    | let opSet = $smrv.sets->toOne()->cast(@OperationSetImplementation);
+                      let resolvedSets = $opSet->resolveOperation($smrv.mapping);
+                      let filteredGetAllClass = $smrv->fetchFilteredGetAllClass();
+                      if ($filteredGetAllClass->isNotEmpty(),
+                          | if ($resolvedSets->size() > 1,
+                                | let routedSubExpressions = $resolvedSets->map({rset |
+                                    let newMap = ^Mapping(name = 'gen_split_union_routing_mapping');
+                                    $newMap->mutateAdd('includes', ^MappingInclude(owner = $newMap, included = $smrv.mapping));
+                                    $newMap->mutateAdd('classMappings', ^$opSet(id = 'gen_split_union_' + $opSet.id, parent = $newMap, parameters = ^SetImplementationContainer(id = $rset.id, setImplementation = $rset), operation = meta::pure::router::operations::union_OperationSetImplementation_1__SetImplementation_MANY_));
+                                    $fe->enrichFunctionExpressions(getRoutingStrategyFromMappingAndRuntime($newMap, $smrv.runtime), $executionContext, $inScopeVars->putAll($f->openVariableValues()), false, $extensions, $debug)->at(0);
+                                  });
+                                  ^$processedFunction(value = buildConctenate($routedSubExpressions, $routedSubExpressions->at(0).genericType), routingStrategy = meta::pure::router::platform::routing::getPlatformRoutingStrategy());,
+                                | $processedFunction
+                            ),
+                          | $processedFunction
+                      );,
+                    | $processedFunction
+                )
+              },
+              {a: Any[*] | $processedFunction}
+            ])
+          },
+          {a: Any[*] | $processedFunction}
+        ]);
+      }
     )
   ];
 }
 
+function <<access.private>> meta::pure::router::store::routing::buildConctenate(v:ValueSpecification[*], genericType: GenericType[1]): ValueSpecification[1]
+{
+   $v->tail()->fold({a,b|
+                          ^SimpleFunctionExpression(func=if(true,|concatenate_TabularDataSet_1__TabularDataSet_1__TabularDataSet_1_,|concatenate_TabularDataSet_1__TabularDataSet_1__TabularDataSet_1_),
+                                                    functionName='concatenate',
+                                                    genericType = $genericType,
+                                                    multiplicity = ZeroMany,
+                                                    importGroup = system::imports::coreImport,
+                                                    // resolvedTypeParameters = ^GenericType(rawType=Any),
+                                                    parametersValues = [ $b, $a ]->evaluateAndDeactivate()
+                                                   )->evaluateAndDeactivate();
+                        },$v->head()->toOne())
+}
+
+function <<access.private>> meta::pure::router::store::routing::fetchFilteredGetAllClass(vs: ValueSpecification[1]): Class<Any>[0..1]
+{
+  $vs->byPassRouterInfo()->match([
+    {fe: FunctionExpression[1] |
+      if (
+        [
+          pair(
+            {|$fe.func == meta::pure::functions::collection::filter_T_MANY__Function_1__T_MANY_},
+            {|$fe.parametersValues->evaluateAndDeactivate()->at(0)->fetchFilteredGetAllClass()}
+          ),
+          pair(
+            {|$fe.func->meta::pure::router::routing::isGetAllFunction()},
+            {|
+              $fe.parametersValues->evaluateAndDeactivate()->at(0)->meta::pure::router::utils::deepByPassRouterInfo()->match([
+                iv: InstanceValue[1] | $iv.values->evaluateAndDeactivate()->match([cls: Class<Any>[1] | $cls, a: Any[*] | []]),
+                a: Any[*] | []
+              ])
+            }
+          )
+        ],
+        {|[]}
+      )
+    },
+    {a: Any[*] | []}
+  ])
+}
 // ===================================================================================
 // Helper Functions
 // ===================================================================================
