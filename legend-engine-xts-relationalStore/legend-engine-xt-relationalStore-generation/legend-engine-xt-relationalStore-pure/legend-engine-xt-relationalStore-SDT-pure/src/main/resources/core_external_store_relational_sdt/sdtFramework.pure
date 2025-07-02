@@ -260,3 +260,62 @@ function meta::external::store::relational::sdt::framework::runPostgresSdtTestsI
     $debug
   );
 }
+
+function meta::external::store::relational::sdt::framework::generateSdtSummaryReportHtml(dbTypes: String[*], extensions: Extension[*]): String[1]
+{
+  let report = meta::external::store::relational::sdt::framework::generateSdtSummaryReport($dbTypes, $extensions)->meta::json::toJsonBeta();
+  let htmlTemplate = readFile('/core_external_store_relational_sdt/sdtReport/sdtReportTemplate.html')->toOne();
+  $htmlTemplate->replace('<<SDT_REPORT_CONTENT>>', $report);
+}
+
+function meta::external::store::relational::sdt::framework::generateSdtSummaryReport(dbTypes: String[*], extensions: Extension[*]): SdtSummaryReport[1]
+{
+  let allSdtTests = collectSDTTestsInPackage('meta::external::store::relational::sdt::suite::literals')->map(x | $x->eval())->sortBy(x | $x.identifier);
+  let dbTypeToDialectMap = $dbTypes->map(dbType | pair($dbType, $dbType->fetchSqlDialectForDbType($extensions)))->newMap();
+
+  ^SdtSummaryReport
+  (
+    reportGenerationTime = now(),
+    reportGeneratedForDbTypes = $dbTypes->sort(),
+    testResults = $allSdtTests->map({sdt |
+      ^SdtSummaryReportTestResult
+      (
+        identifier = $sdt.identifier,
+        dbResults = $dbTypes->map({dbType |
+          let optionalFailure = $dbTypeToDialectMap->get($dbType)->toOne().expectedSqlDialectTestErrors->get($sdt.identifier);
+          pair(
+            $dbType,
+            ^SdtSummaryReportDBTestResult
+            (
+              testQuery = if ($optionalFailure->isEmpty() || ($optionalFailure->toOne()->contains('Expected') && $optionalFailure->toOne()->contains('Actual')),
+                              | $sdt->generateSdtTestCaseSqls($dbType, $extensions).testQuery,
+                              | []
+                          ),
+              expectedError = $optionalFailure
+            )
+          );
+        })->newMap()
+      )
+    })
+  );
+}
+
+
+Class meta::external::store::relational::sdt::framework::SdtSummaryReport
+{
+  reportGenerationTime: DateTime[1];
+  reportGeneratedForDbTypes: String[*];
+  testResults: SdtSummaryReportTestResult[*];
+}
+
+Class meta::external::store::relational::sdt::framework::SdtSummaryReportTestResult
+{
+  identifier: String[1];
+  dbResults: Map<String, SdtSummaryReportDBTestResult>[1];
+}
+
+Class meta::external::store::relational::sdt::framework::SdtSummaryReportDBTestResult
+{
+  testQuery: String[0..1];
+  expectedError: String[0..1];
+}
